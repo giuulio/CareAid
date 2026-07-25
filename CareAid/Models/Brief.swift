@@ -35,6 +35,22 @@ nonisolated struct BriefContent: Codable, Hashable, Sendable {
         case whatsWorking = "whats_working"
     }
 
+    init(
+        oneLiner: String,
+        currentConcerns: [Concern] = [],
+        medications: [BriefMedication] = [],
+        recentChanges: [String] = [],
+        openQuestions: [String] = [],
+        whatsWorking: [String] = []
+    ) {
+        self.oneLiner = oneLiner
+        self.currentConcerns = currentConcerns
+        self.medications = medications
+        self.recentChanges = recentChanges
+        self.openQuestions = openQuestions
+        self.whatsWorking = whatsWorking
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         oneLiner = try container.decodeIfPresent(String.self, forKey: .oneLiner) ?? ""

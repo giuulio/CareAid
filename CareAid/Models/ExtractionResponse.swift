@@ -24,6 +24,22 @@ nonisolated struct ExtractionResponse: Codable, Hashable, Sendable {
         case captureID = "capture_id"
     }
 
+    init(
+        captureID: UUID,
+        events: [TimelineEvent] = [],
+        artifacts: [Artifact] = [],
+        patterns: [Pattern] = [],
+        flags: [Flag] = [],
+        brief: Brief? = nil
+    ) {
+        self.captureID = captureID
+        self.events = events
+        self.artifacts = artifacts
+        self.patterns = patterns
+        self.flags = flags
+        self.brief = brief
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         captureID = try container.decode(UUID.self, forKey: .captureID)
@@ -45,6 +61,11 @@ nonisolated struct Pattern: Codable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey {
         case observation
         case evidenceEventIDs = "evidence_event_ids"
+    }
+
+    init(observation: String, evidenceEventIDs: [UUID] = []) {
+        self.observation = observation
+        self.evidenceEventIDs = evidenceEventIDs
     }
 
     init(from decoder: Decoder) throws {

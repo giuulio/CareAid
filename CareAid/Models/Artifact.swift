@@ -24,6 +24,26 @@ nonisolated struct Artifact: Codable, Identifiable, Hashable, Sendable {
         case actionedAt = "actioned_at"
     }
 
+    init(
+        id: UUID,
+        recipientID: UUID,
+        captureID: UUID?,
+        payload: ArtifactPayload,
+        status: ArtifactStatus,
+        confidence: Double? = nil,
+        createdAt: Date? = nil,
+        actionedAt: Date? = nil
+    ) {
+        self.id = id
+        self.recipientID = recipientID
+        self.captureID = captureID
+        self.payload = payload
+        self.status = status
+        self.confidence = confidence
+        self.createdAt = createdAt
+        self.actionedAt = actionedAt
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -135,6 +155,22 @@ nonisolated struct CalendarEventPayload: Codable, Hashable, Sendable {
         case startsAt = "starts_at"
         case endsAt = "ends_at"
         case remindersMin = "reminders_min"
+    }
+
+    init(
+        title: String,
+        startsAt: Date,
+        endsAt: Date? = nil,
+        location: String? = nil,
+        notes: String? = nil,
+        remindersMin: [Int] = []
+    ) {
+        self.title = title
+        self.startsAt = startsAt
+        self.endsAt = endsAt
+        self.location = location
+        self.notes = notes
+        self.remindersMin = remindersMin
     }
 
     init(from decoder: Decoder) throws {
