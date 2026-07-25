@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template. Do this once, per machine:
+
+      cp CareAid/Resources/Supabase.example.plist \
+         CareAid/Resources/Supabase.plist
+
+  then fill in the two values below.
+
+  Supabase.plist is gitignored and must stay that way. RLS is off for the demo
+  (CLAUDE.md §6), which makes the anon key a full read/write credential to the
+  database rather than the public one it normally is.
+
+  Both values come from the Supabase dashboard: Settings -> API.
+
+  Nothing else belongs in here. The service_role / secret key and the
+  Anthropic, OpenAI and ElevenLabs keys never touch the app — they are set as
+  Edge Function secrets and only ever read server-side (CLAUDE.md §2, rule 5).
+-->
+<plist version="1.0">
+<dict>
+	<!-- Project URL, e.g. https://abcdefgh.supabase.co -->
+	<key>SUPABASE_URL</key>
+	<string></string>
+	<!-- The anon / publishable key only. Never the service_role key. -->
+	<key>SUPABASE_ANON_KEY</key>
+	<string></string>
+</dict>
+</plist>

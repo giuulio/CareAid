@@ -45,7 +45,15 @@ enum Config {
             let raw = try? PropertyListSerialization.propertyList(from: data, format: nil),
             let dict = raw as? [String: String]
         else {
-            assertionFailure("Supabase.plist missing or malformed — check it is in the app bundle.")
+            // Not an assertion: Supabase.plist is gitignored, so a fresh clone
+            // legitimately has no copy yet. The app must still launch.
+            #if DEBUG
+            print("""
+                [CareAid] No Supabase.plist — the app will run without a backend.
+                          cp CareAid/Resources/Supabase.example.plist \
+                CareAid/Resources/Supabase.plist and fill it in.
+                """)
+            #endif
             return [:]
         }
         return dict.compactMapValues { $0.isEmpty ? nil : $0 }

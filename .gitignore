@@ -27,6 +27,12 @@ Packages/
 .env.*
 !.env.example
 
+# Real Supabase credentials. Copy Supabase.example.plist to Supabase.plist and
+# fill it in. Kept out of git so this repo can be made public at any moment
+# without a key sitting in its history — and because RLS is off, which makes
+# the anon key a full read/write credential rather than a public one.
+CareAid/Resources/Supabase.plist
+
 ## Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
