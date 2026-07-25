@@ -20,12 +20,20 @@ final class ReviewViewModel {
     let response: ExtractionResponse
     let transcript: String
 
+    /// True when the response came from `DemoData` because the backend was
+    /// unreachable. Its artifacts have ids no row carries, so the status write
+    /// is skipped — but the fan-out still runs, because the calendar entry, the
+    /// WhatsApp draft and the reminders are all local and should genuinely
+    /// happen.
+    let isOffline: Bool
+
     private(set) var decisions: [UUID: Decision] = [:]
     var transcriptExpanded = false
 
-    init(response: ExtractionResponse, transcript: String = "") {
+    init(response: ExtractionResponse, transcript: String = "", isOffline: Bool = false) {
         self.response = response
         self.transcript = transcript
+        self.isOffline = isOffline
     }
 
     /// Proposals stay on screen after a decision — she should see what she just
@@ -55,7 +63,7 @@ final class ReviewViewModel {
         decisions[artifact.id] = .working
         do {
             try await FanOutService().perform(artifact)
-            try await ArtifactRepository().setStatus(.approved, for: artifact.id)
+            try await record(.approved, for: artifact)
             decisions[artifact.id] = .approved
         } catch {
             decisions[artifact.id] = .failed(error.localizedDescription)
@@ -65,30 +73,22 @@ final class ReviewViewModel {
     func dismiss(_ artifact: Artifact) async {
         decisions[artifact.id] = .working
         do {
-            try await ArtifactRepository().setStatus(.dismissed, for: artifact.id)
+            try await record(.dismissed, for: artifact)
             decisions[artifact.id] = .dismissed
         } catch {
             decisions[artifact.id] = .failed(error.localizedDescription)
         }
     }
 
+    /// Writes the decision, unless there is no row to write it to.
+    private func record(_ status: ArtifactStatus, for artifact: Artifact) async throws {
+        guard !isOffline else { return }
+        try await ArtifactRepository().setStatus(status, for: artifact.id)
+    }
+
     func approveAll() async {
         for artifact in artifacts where decision(for: artifact) == .pending {
             await approve(artifact)
-        }
-    }
-
-    private func setStatus(
-        _ status: ArtifactStatus,
-        for artifact: Artifact,
-        then outcome: Decision
-    ) async {
-        decisions[artifact.id] = .working
-        do {
-            try await ArtifactRepository().setStatus(status, for: artifact.id)
-            decisions[artifact.id] = outcome
-        } catch {
-            decisions[artifact.id] = .failed(error.localizedDescription)
         }
     }
 }

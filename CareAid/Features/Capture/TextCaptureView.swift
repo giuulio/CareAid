@@ -25,7 +25,11 @@ struct TextCaptureView: View {
         .fullScreenCover(
             item: Binding(get: { model.review }, set: { if $0 == nil { finish() } })
         ) { review in
-            ReviewView(response: review.response, transcript: review.transcript)
+            ReviewView(
+                response: review.response,
+                transcript: review.transcript,
+                isOffline: review.isOffline
+            )
         }
         .onAppear { editorFocused = true }
     }

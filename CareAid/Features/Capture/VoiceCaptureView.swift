@@ -20,7 +20,11 @@ struct VoiceCaptureView: View {
         .fullScreenCover(
             item: Binding(get: { voice.review }, set: { if $0 == nil { finish() } })
         ) { review in
-            ReviewView(response: review.response, transcript: review.transcript)
+            ReviewView(
+                response: review.response,
+                transcript: review.transcript,
+                isOffline: review.isOffline
+            )
         }
         .task { await voice.start() }
         .onDisappear { voice.cancel() }

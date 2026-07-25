@@ -9,8 +9,10 @@ struct ReviewView: View {
     @State private var model: ReviewViewModel
     @State private var appeared = false
 
-    init(response: ExtractionResponse, transcript: String = "") {
-        _model = State(initialValue: ReviewViewModel(response: response, transcript: transcript))
+    init(response: ExtractionResponse, transcript: String = "", isOffline: Bool = false) {
+        _model = State(initialValue: ReviewViewModel(
+            response: response, transcript: transcript, isOffline: isOffline
+        ))
     }
 
     var body: some View {

@@ -54,6 +54,10 @@ final class VoiceCaptureViewModel {
                 id: capture.id, response: response, transcript: words
             )
         } catch {
+            if let fallback = OfflineFallback.review(for: words, error: error) {
+                review = fallback
+                return
+            }
             // The capture row may already exist; the words are on screen either
             // way, so nothing she said is lost.
             phase = .failed(error.localizedDescription)

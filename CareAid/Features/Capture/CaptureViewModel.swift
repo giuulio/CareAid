@@ -23,6 +23,10 @@ final class CaptureViewModel {
         let id: UUID
         let response: ExtractionResponse
         let transcript: String
+        /// True when this came from `DemoData` because the backend was
+        /// unreachable. Its rows exist in no database, so approving must not
+        /// try to PATCH them.
+        var isOffline = false
     }
 
     var text: String = ""
@@ -84,7 +88,38 @@ final class CaptureViewModel {
             let response = try await ExtractionService().extract(captureID: capture.id)
             review = Review(id: capture.id, response: response, transcript: transcript)
         } catch {
-            state = .failed(capture: capture, message: error.localizedDescription)
+            if let fallback = OfflineFallback.review(for: transcript, error: error) {
+                review = fallback
+            } else {
+                state = .failed(capture: capture, message: error.localizedDescription)
+            }
         }
+    }
+}
+
+/// The one place the demo fallback is decided, so both capture paths agree.
+nonisolated enum OfflineFallback {
+
+    /// A pre-baked review for the demo script when the backend is unreachable.
+    ///
+    /// Returns nil for anything else — an ordinary note that fails extraction
+    /// must fail visibly (CLAUDE.md §8 keeps the raw text either way).
+    static func review(for transcript: String, error: Error) -> CaptureViewModel.Review? {
+        guard DemoData.resembles(transcript) else { return nil }
+
+        // Loud on purpose. A shadow path that silently covers a real failure is
+        // how a broken backend goes unnoticed until it matters.
+        print("""
+            [CareAid] ⚠️ EXTRACTION FAILED — falling back to the offline demo response.
+                      This is the §9 script, so the Review sheet will still fill.
+                      Reason: \(error.localizedDescription)
+            """)
+
+        return CaptureViewModel.Review(
+            id: DemoData.extractionResponse.captureID,
+            response: DemoData.extractionResponse,
+            transcript: transcript,
+            isOffline: true
+        )
     }
 }
