@@ -56,13 +56,30 @@ struct ReviewCard: View {
 
         case .medicationUpdate:
             return "Medication update"
-
-        default:
-            return "Care item"
         }
     }
 
+    /// The payload enum carries a different shape per kind, so each case picks
+    /// the field the caregiver actually needs to read before deciding.
     private var detail: String {
-        artifact.payload.description
+        switch artifact.payload {
+        case .task(let payload):
+            payload.title
+
+        case .calendarEvent(let payload):
+            payload.title
+
+        case .familyUpdate(let payload):
+            payload.draftText
+
+        case .question(let payload):
+            payload.question
+
+        case .timer(let payload):
+            payload.label
+
+        case .medicationUpdate(let payload):
+            "\(payload.medicationName) — \(payload.field.rawValue) to \(payload.to)"
+        }
     }
 }

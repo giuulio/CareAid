@@ -11,5 +11,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 out=$(mktemp -d)
-xcrun swiftc -swift-version 6 ../../CareAid/Models/*.swift main.swift -o "$out/model_check"
+# Config comes along because DisplayDate reads the display timezone from it.
+xcrun swiftc -swift-version 6 \
+  ../../CareAid/Models/*.swift ../../CareAid/App/Config.swift main.swift \
+  -o "$out/model_check"
 "$out/model_check"

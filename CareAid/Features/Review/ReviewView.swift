@@ -31,7 +31,9 @@ struct ReviewView: View {
                 if !viewModel.response.events.isEmpty {
                     VStack(spacing: 12) {
                         ForEach(viewModel.response.events) { event in
-                            TimelinePreview(event: event)
+                            // TimelinePreview doesn't exist; TimelineEventRow
+                            // from C4 renders the same thing.
+                            TimelineEventRow(event: event)
                         }
                     }
                 }
