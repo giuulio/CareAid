@@ -89,8 +89,14 @@ ${lines.join("\n")}`);
 
   if (upcoming.data?.length) {
     const lines = upcoming.data.map((e) => `- ${e.occurred_at} — ${e.headline}`);
-    sections.push(`ALREADY IN THE DIARY
-Do not propose a calendar event that duplicates one of these.
+    sections.push(`APPOINTMENTS ALREADY RECORDED
+These are CareAid's own records. They are NOT in Sarah's phone calendar.
+
+So if she mentions one of these, still propose a calendar event — that is how it
+reaches her actual diary. Use the date and time recorded here rather than
+resolving hers, since she is often vague ("the 14th") and this is authoritative.
+Only skip it if she is plainly just referring to the appointment in passing and
+not asking to be reminded of it.
 ${lines.join("\n")}`);
   }
 
