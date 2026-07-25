@@ -221,6 +221,12 @@ Approving a `medication_update` writes to the `medication` table, which is what 
 
 **One LLM call per capture. Not a chain.** Edge Function `extract`.
 
+**Models.** `LLM_PROVIDER` selects the provider and defaults to `openai` — that is where the hackathon credit is. `openai` → `gpt-5.6-sol`. `anthropic` → `claude-opus-5`. Both are implemented; switching is one env var and no code change.
+
+**The schema is enforced by the API, not by the prompt.** Both providers support structured outputs (OpenAI `json_schema`, Anthropic `output_config.format`), so the response below is guaranteed to match rather than merely asked to. The repair-and-retry path in PLAN.md C5 stays as a fallback for a provider that returns something unusable anyway, but it is no longer the main line.
+
+**One wrinkle: the model emits artifacts as per-kind arrays.** OpenAI's strict mode rejects `anyOf`, and `artifact.payload` has six shapes keyed by `kind`, so a single `artifacts` array cannot be expressed. The model therefore returns `tasks`, `calendar_events`, `family_updates`, `questions`, `timers` and `medication_updates` as separate arrays — each homogeneous, each strictly typed — and the Edge Function flattens them into `artifact` rows with the right `kind`. **The app is unaffected:** it receives the single `artifacts` array described below. One schema serves both providers.
+
 **Context assembled server-side and injected:** recipient profile, active medications with scheduled times, circle members *by name and relation* (so the model resolves "Tom" → a `circle_member_id`), upcoming appointments, current brief, last 90 days of timeline headlines (one line each — this is what makes pattern detection possible), and current datetime in Europe/London.
 
 **The model never touches the database.** No tools, no function calling, no agentic loop. The Edge Function queries Postgres itself and injects the results as text. One call in, one JSON object out — predictable latency, and the model physically cannot write anything.
