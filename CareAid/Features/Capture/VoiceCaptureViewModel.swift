@@ -27,7 +27,7 @@ final class VoiceCaptureViewModel {
     func start() async {
         do {
             try await speech.begin()
-            recorder.onBuffer = { [speech] buffer in speech.append(buffer) }
+            recorder.onBuffer = { @Sendable [speech] buffer in speech.append(buffer) }
             try await recorder.start()
             phase = .listening
         } catch {

@@ -54,7 +54,14 @@ final class TranscriptionService {
     /// *buffer* request — so this is annotated unsafe rather than serialised.
     private nonisolated(unsafe) var request: SFSpeechAudioBufferRecognitionRequest?
 
-    static func requestPermission() async -> Bool {
+    /// `nonisolated` is load-bearing, not tidiness.
+    ///
+    /// The target builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so
+    /// without it this closure is main-actor isolated — and `requestAuthorization`
+    /// calls back on TCC's own queue, which trips `dispatch_assert_queue` and
+    /// takes the app down the instant she taps the mic. Nothing here touches
+    /// isolated state, so running off the main actor is correct as well as safe.
+    nonisolated static func requestPermission() async -> Bool {
         await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { status in
                 continuation.resume(returning: status == .authorized)
@@ -75,11 +82,17 @@ final class TranscriptionService {
         request.requiresOnDeviceRecognition = recogniser.supportsOnDeviceRecognition
         self.request = request
 
-        task = recogniser.recognitionTask(with: request) { [weak self] result, error in
-            guard let self else { return }
+        // `@Sendable` for the same reason `requestPermission` is `nonisolated`:
+        // the recogniser calls back on its own queue, and a main-actor-isolated
+        // closure would assert there. The hop below is what puts the words on
+        // screen safely.
+        task = recogniser.recognitionTask(with: request) { @Sendable [weak self] result, error in
+            let words = result?.bestTranscription.formattedString
+            let finished = error != nil || result?.isFinal == true
             Task { @MainActor in
-                if let result { self.transcript = result.bestTranscription.formattedString }
-                if error != nil || result?.isFinal == true { self.isListening = false }
+                guard let self else { return }
+                if let words { self.transcript = words }
+                if finished { self.isListening = false }
             }
         }
         isListening = true

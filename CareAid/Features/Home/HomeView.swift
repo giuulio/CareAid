@@ -6,6 +6,7 @@ import SwiftUI
 /// (CLAUDE.md §8).
 struct HomeView: View {
     @Environment(AppState.self) private var appState
+    @State private var model = HomeViewModel()
 
     var body: some View {
         ScreenScaffold(fillsHeight: true) {
@@ -30,6 +31,13 @@ struct HomeView: View {
             .frame(maxWidth: .infinity)
         }
         .toolbar { destinationIcons }
+        .task { await model.load() }
+        // Reload whenever she comes back to Home. What she just recorded should
+        // already be sitting under the mic — that moment is the whole promise.
+        .onChange(of: appState.path) { _, path in
+            guard path.isEmpty else { return }
+            Task { await model.load() }
+        }
     }
 
     // MARK: - Pieces
@@ -48,31 +56,37 @@ struct HomeView: View {
     // image alongside the text. `NSCameraUsageDescription` and the `photo`
     // value of `capture.source` are already in place for it.
 
-    /// Today's timeline, three items maximum. Empty until C4 wires up the DB.
+    /// Today's timeline, three items maximum, through to the full history.
     private var todayStrip: some View {
-        Card {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Today")
-                    .themeFont(Theme.TypeScale.cardHeadline)
-                    .foregroundStyle(Theme.Palette.ink)
-                Text("Nothing recorded yet.")
-                    .themeFont(Theme.TypeScale.body)
-                    .foregroundStyle(Theme.Palette.inkSecondary)
-            }
+        HomeGlanceCard(
+            title: "Today",
+            emptyText: emptyText(otherwise: "Nothing recorded yet."),
+            events: model.today,
+            label: { DisplayDate.time($0.occurredAt) }
+        ) {
+            appState.path.append(.timeline)
         }
     }
 
-    /// The next two things coming up.
+    /// The next two things coming up, through to the appointment pack.
     private var upcoming: some View {
-        Card {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Coming up")
-                    .themeFont(Theme.TypeScale.cardHeadline)
-                    .foregroundStyle(Theme.Palette.ink)
-                Text("Nothing in the diary.")
-                    .themeFont(Theme.TypeScale.body)
-                    .foregroundStyle(Theme.Palette.inkSecondary)
-            }
+        HomeGlanceCard(
+            title: "Coming up",
+            emptyText: emptyText(otherwise: "Nothing in the diary."),
+            events: model.upcoming,
+            label: { "\(DisplayDate.dayLabel(for: $0.occurredAt)), \(DisplayDate.time($0.occurredAt))" }
+        ) {
+            appState.path.append(.appointmentPack)
+        }
+    }
+
+    /// Home is never a dead end. If the backend is unreachable the mic still
+    /// works, so say so in one line instead of throwing up an error screen.
+    private func emptyText(otherwise empty: String) -> String {
+        switch model.state {
+        case .loading: "One moment…"
+        case .loaded: empty
+        case .failed: "Can't reach her records right now. You can still record."
         }
     }
 

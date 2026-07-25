@@ -14,10 +14,24 @@ enum Route: Hashable {
     #if DEBUG
     case themeGallery
     #endif
+
+    #if DEBUG
+    /// The name used by `-openScreen`, below.
+    init?(argumentName: String) {
+        switch argumentName {
+        case "voice": self = .voiceCapture
+        case "text": self = .textCapture
+        case "timeline": self = .timeline
+        case "schedule": self = .schedule
+        case "appointments": self = .appointmentPack
+        case "theme": self = .themeGallery
+        default: return nil
+        }
+    }
+    #endif
 }
 
-/// App-wide state. Deliberately thin for now — real data arrives with the
-/// repositories in C4.
+/// App-wide state.
 @Observable
 final class AppState {
     /// Navigation stack behind Home.
@@ -25,4 +39,18 @@ final class AppState {
 
     /// What the caregiver calls the person they look after.
     let recipientDisplayName = "Mum"
+
+    init() {
+        #if DEBUG
+        // `simctl launch booted com.giulio.CareAid -openScreen schedule` opens
+        // straight onto a screen. There is no way to tap the simulator from a
+        // script, so without this every check of a screen behind Home needs a
+        // human with a mouse — which is how a crash on the voice path survives
+        // to the morning of the demo.
+        if let name = UserDefaults.standard.string(forKey: "openScreen"),
+           let route = Route(argumentName: name) {
+            path = [route]
+        }
+        #endif
+    }
 }

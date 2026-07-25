@@ -35,7 +35,12 @@ final class AudioRecorder {
     private(set) var fileURL: URL?
 
     /// Called on the audio thread for every buffer — keep the work small.
-    var onBuffer: ((AVAudioPCMBuffer) -> Void)? {
+    ///
+    /// `@Sendable` is required, not decorative: the target builds with
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so a plain closure written
+    /// at a call site would be main-actor isolated and assert the moment the
+    /// audio thread called it.
+    var onBuffer: (@Sendable (AVAudioPCMBuffer) -> Void)? {
         get { sink.onBuffer }
         set { sink.onBuffer = newValue }
     }
@@ -44,10 +49,16 @@ final class AudioRecorder {
     /// isolation. `AVAudioPCMBuffer` is not `Sendable` and the tap runs off the
     /// main actor, so hopping each buffer to `@MainActor` would both fail to
     /// compile and be the wrong thing to do 40 times a second.
-    private final class Sink: @unchecked Sendable {
+    ///
+    /// `nonisolated` is what actually keeps that promise. The target sets
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so without it every member
+    /// here is main-actor isolated — `@unchecked Sendable` waives the checking
+    /// but does not change the isolation — and `receive` asserts on the audio
+    /// thread the first time a buffer arrives.
+    private nonisolated final class Sink: @unchecked Sendable {
         var file: AVAudioFile?
-        var onBuffer: ((AVAudioPCMBuffer) -> Void)?
-        var onLevel: ((Float) -> Void)?
+        var onBuffer: (@Sendable (AVAudioPCMBuffer) -> Void)?
+        var onLevel: (@Sendable (Float) -> Void)?
 
         func receive(_ buffer: AVAudioPCMBuffer) {
             try? file?.write(from: buffer)
@@ -73,13 +84,13 @@ final class AudioRecorder {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("capture-\(UUID().uuidString).caf")
         sink.file = try AVAudioFile(forWriting: url, settings: format.settings)
-        sink.onLevel = { [weak self] level in
+        sink.onLevel = { @Sendable [weak self] level in
             // Only the Float crosses back to the main actor, once per buffer.
             Task { @MainActor in self?.append(level) }
         }
         fileURL = url
 
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [sink] buffer, _ in
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { @Sendable [sink] buffer, _ in
             sink.receive(buffer)
         }
 
