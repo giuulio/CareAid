@@ -11,7 +11,9 @@ Swift `.gitignore` (exclude `xcuserdata/`, `.DS_Store`, `.env`). `Config.swift` 
 `chore: project scaffolding and config`
 
 ### C1 · Theme and components — P0
-`Theme.swift`: colour, spacing, type-scale, radius tokens as constants. Warm paper base, near-black ink, one accent — placeholder hex values, clearly marked `// TODO: Figma tokens`. Components: `Card`, `PrimaryButton` (72pt), `SecondaryButton`, `ScreenScaffold`, `MicButton`. Nav shell with the three top icons and three stub screens.
+`Theme.swift`: colour, spacing, type-scale, radius and size tokens as constants. **Semantic names** (`ink`, `surface`, `accent`) — never literal ones (`warmGrey`), so the palette can move without touching a view. Light and dark values defined together, one token at a time. Warm paper base, near-black ink, one accent — **provisional values, retuned in C13**.
+
+Components: `Card`, `PrimaryButton` (72pt), `SecondaryButton`, `ScreenScaffold`, `MicButton`. **Icons are SF Symbols only** — no bundled icon assets. Nav shell with the three top icons and three stub screens. A `ThemeGallery` debug screen renders every token on one page so C13 is a visual edit, not a hunt.
 **Every later view uses these tokens. No hardcoded values anywhere.**
 `feat: theme tokens, base components, navigation shell`
 
@@ -76,9 +78,11 @@ Schedule screen shows before/after and flags conflicts. **A conflict never chang
 `feat: caregiver-aware medication scheduler`
 
 ### C13 · Design pass — P0
-Figma tokens into `Theme.swift`. Full typography, spacing and colour pass across all screens. Liquid Glass on chrome, solid opaque content cards. Verify contrast and 56pt touch targets. Empty states. Loading states that show the transcript, never a bare spinner.
+Retune the values in `Theme.swift` against the real screens — every colour, size and spacing decision from C1 was provisional and lives in that one file. Work from `ThemeGallery`. (If a Figma file with exported tokens ever materialises, this is where its values land — but nothing before this point depends on one existing.) Full typography, spacing and colour pass across all screens. Liquid Glass on chrome, solid opaque content cards. Verify contrast and 56pt touch targets. Empty states. Loading states that show the transcript, never a bare spinner.
+
+The §8 accessibility floors are **not** provisional: 19–20pt body, 22pt card headlines, 56pt touch targets, 72pt primary actions, 7:1 body contrast. Tune around them, not through them.
 **Do not skip this. It is where the prize is.**
-`style: design pass against figma tokens`
+`style: design pass`
 
 ### C14 · Demo hardening — P0
 Pre-grant every permission on the demo device. Graceful failure on every network call. Reset-and-reseed script. Run the demo script five times, fix only demo-path bugs. Record a backup video on the physical device.

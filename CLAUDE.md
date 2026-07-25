@@ -59,7 +59,8 @@ A caregiver speaks one messy, tired thought. One AI pass turns it into a timelin
 
 - **Xcode project uses file-system-synchronised groups.** Adding a `.swift` file to a folder on disk is enough — never edit `project.pbxproj`. If a file needs to be added, just create it in the right folder.
 - **Everyone commits to `main`.** Small, frequent commits. Follow `PLAN.md` commit order.
-- **`Theme.swift` before any view.** No hardcoded colours, fonts, spacing or radii in feature code. Ever. Design tokens arrive from Figma later and must land in one file.
+- **`Theme.swift` before any view.** No hardcoded colours, fonts, spacing or radii in feature code. Ever. Values are provisional until C13 and must all live in that one file, so a redesign is one edit. Token names are **semantic** (`ink`, `surface`, `accent`), never literal (`warmGrey`).
+- **Icons are SF Symbols.** No bundled icon assets — they inherit Dynamic Type and dark mode for free.
 - Timestamps: **UTC in the database, Europe/London on screen.**
 - Async/await throughout. No completion handlers.
 - Keep views under ~150 lines; extract subviews.
@@ -83,9 +84,9 @@ xcrun simctl io booted screenshot /tmp/kin.png
 ## 5. Folder structure
 
 ```
-Kin/
-├── App/            KinApp.swift, AppState.swift, Config.swift
-├── Theme/          Theme.swift
+CareAid/
+├── App/            CareAidApp.swift, RootView.swift, AppState.swift, Config.swift
+├── Theme/          Theme.swift, ColorToken.swift, ThemeGallery.swift
 │   └── Components/ Card.swift, PrimaryButton.swift, ScreenScaffold.swift, MicButton.swift
 ├── Models/         Recipient, CircleMember, Medication, Capture,
 │                   TimelineEvent, Artifact, Brief, ExtractionResult
