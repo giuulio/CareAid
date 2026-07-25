@@ -50,7 +50,7 @@ does arithmetic on) — so the two representations can't drift. Still attributio
 a dose count but no clock times and the existing times don't settle it, the model flags instead of
 emitting either update.
 
-## 3. Schedule screen is an unwired stub (dependency note, not a bug) — OPEN
+## 3. Schedule screen is an unwired stub (dependency note, not a bug) — FIXED
 
 **Where:** `CareAid/Features/Schedule/ScheduleView.swift`, `Services/Schedule/`,
 `Services/Rules/` (placeholders / `.gitkeep` only).
@@ -58,9 +58,10 @@ emitting either update.
 Not a bug by itself — noted because it's why #2 isn't visibly broken yet. Check #2 before or
 while building the C12 scheduler on top of this.
 
-**Status:** #2 is now fixed, as this note advised, so the scheduler can be built against a schema
-that keeps `schedule` and `scheduled_times` in step. C11 and C12 themselves are the next piece of
-work; this entry closes when `ScheduleView` is real.
+**Fixed:** #2 was fixed first, as this note advised, so the scheduler was built against a schema
+that keeps `schedule` and `scheduled_times` in step. `Services/Rules/` now holds the
+DailyMed-sourced rules and `RuleStore`, `Services/Schedule/` holds `MedicationScheduler`, and
+`ScheduleView` is real.
 
 ## 4. Untyped JSON values in `MedicationRepository.update` (possible failure on approve) — FIXED
 

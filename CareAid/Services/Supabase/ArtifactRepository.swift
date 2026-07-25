@@ -44,6 +44,29 @@ nonisolated struct ArtifactRepository {
             .decoded([Artifact].self)
     }
 
+    /// Raises a question the scheduler found, as a normal proposal.
+    ///
+    /// The one insert the app performs. §7 gives the Edge Function ownership of
+    /// every *extraction* write, and this is not one — nothing was extracted,
+    /// no model was called, and there is no capture behind it. A medication
+    /// timing conflict is noticed on device by `MedicationScheduler`, and per
+    /// §2 rule 1 the only thing it may produce is a question for a pharmacist.
+    ///
+    /// `capture_id` is null: "see what I said" has nothing to show, because she
+    /// didn't say anything — we noticed.
+    @discardableResult
+    func propose(question: QuestionPayload) async throws -> Artifact {
+        try await client
+            .from("artifact")
+            .insert(NewQuestion(
+                recipientID: Config.recipientID,
+                payload: question
+            ))
+            .select()
+            .single()
+            .decoded(Artifact.self)
+    }
+
     func setStatus(_ status: ArtifactStatus, for id: UUID) async throws {
         try await client
             .from("artifact")
@@ -53,5 +76,19 @@ nonisolated struct ArtifactRepository {
             ])
             .eq("id", value: id.uuidString)
             .execute()
+    }
+}
+
+/// The insert shape. `status` is hardcoded `proposed` rather than passed in —
+/// nothing this app writes may arrive already approved (§2, rule 3).
+private nonisolated struct NewQuestion: Encodable {
+    let recipientID: UUID
+    let payload: QuestionPayload
+    let kind = ArtifactKind.question.rawValue
+    let status = ArtifactStatus.proposed.rawValue
+
+    enum CodingKeys: String, CodingKey {
+        case payload, kind, status
+        case recipientID = "recipient_id"
     }
 }
