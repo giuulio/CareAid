@@ -1,0 +1,102 @@
+{
+  "generated_by": "tools/dailymed_extract.py",
+  "source": "DailyMed SPL v2, Dosage and Administration (LOINC 34068-7), via RxNorm",
+  "disclaimer": "Reference data only. These are label administration facts, not advice, not a diagnosis and not a treatment recommendation. A timing conflict produces a question for a pharmacist or GP, never a schedule change.",
+  "medications": [
+    {
+      "name": "Co-careldopa (Sinemet)",
+      "query": "carbidopa / levodopa",
+      "rules": [],
+      "mapping_note": "UK co-careldopa is the same combination as US carbidopa/levodopa (Sinemet).",
+      "rxcui": "103990",
+      "setid": "4ace5274-b6cf-414c-b9c0-f60e28a9cea5",
+      "spl_title": "CARBIDOPA AND LEVODOPA TABLET [TEVA PHARMACEUTICALS USA, INC.]"
+    },
+    {
+      "name": "Entacapone",
+      "query": "entacapone",
+      "rules": [
+        {
+          "type": "co_administer",
+          "source_sentence": "The recommended dose of entacapone tablets is one 200 mg tablet administered concomitantly with each levodopa and carbidopa dose to a maximum of 8 times daily (200 mg x 8 = 1,600 mg per day)."
+        },
+        {
+          "type": "food_optional",
+          "source_sentence": "Entacapone tablets may be taken with or without food (see CLINICAL PHARMACOLOGY)."
+        }
+      ],
+      "rxcui": "60307",
+      "setid": "e9e94e9f-cd7a-45f5-9aeb-9c28ed804d8c",
+      "spl_title": "ENTACAPONE TABLET [AJANTA PHARMA USA INC.]"
+    },
+    {
+      "name": "Rasagiline",
+      "query": "rasagiline",
+      "rules": [],
+      "rxcui": "134748",
+      "setid": "4c4f5042-0e21-40a0-8352-bb28bb752bfa",
+      "spl_title": "RASAGILINE (RASAGILINE) TABLET [BRYANT RANCH PREPACK]"
+    },
+    {
+      "name": "Apixaban",
+      "query": "apixaban",
+      "rules": [],
+      "rxcui": "1364430",
+      "setid": "a454cd24-0c6d-46e8-b1e4-197388606175",
+      "spl_title": "ELIQUIS (APIXABAN) TABLET, FILM COATED [CARDINAL HEALTH 107, LLC]"
+    },
+    {
+      "name": "Bisoprolol",
+      "query": "bisoprolol fumarate",
+      "rules": [],
+      "rxcui": "142146",
+      "setid": "428ef54d-8828-4756-a087-a1b7b2d6b8d6",
+      "spl_title": "BISOPROLOL FUMARATE TABLET [BRYANT RANCH PREPACK]"
+    },
+    {
+      "name": "Atorvastatin",
+      "query": "atorvastatin",
+      "rules": [
+        {
+          "type": "food_optional",
+          "source_sentence": "Take orally once daily with or without food (2.1)."
+        }
+      ],
+      "rxcui": "83367",
+      "setid": "2e583569-499d-4f20-87ca-84e7d9868d22",
+      "spl_title": "ATORVASTATIN CALCIUM TABLET, FILM COATED [BRYANT RANCH PREPACK]"
+    },
+    {
+      "name": "Levothyroxine",
+      "query": "levothyroxine",
+      "rules": [
+        {
+          "type": "empty_stomach",
+          "source_sentence": "Administer once daily, preferably on an empty stomach, one-half to one hour before breakfast with a full glass of water."
+        },
+        {
+          "type": "with_water",
+          "source_sentence": "Administer once daily, preferably on an empty stomach, one-half to one hour before breakfast with a full glass of water."
+        },
+        {
+          "type": "separation",
+          "source_sentence": "Administer at least 4 hours before or after drugs that are known to interfere with absorption.",
+          "hours": 4.0
+        }
+      ],
+      "rxcui": "10582",
+      "setid": "775ef7ba-0b5b-40ba-ac7b-2aef121fe4f4",
+      "spl_title": "LEVOTHYROXINE SODIUM TABLET [BRYANT RANCH PREPACK]"
+    },
+    {
+      "name": "Adcal-D3",
+      "query": "calcium carbonate / cholecalciferol",
+      "rules": [],
+      "mapping_note": "Adcal-D3 is a UK brand with no single US SPL; queried as its two ingredients.",
+      "rxcui": "608343",
+      "setid": "51edd66f-8855-469b-8252-ed0d9e6cdaec",
+      "spl_title": "APCAL (CALCIUM CARBONATE AND VITAMIN D3) TABLET [A P J LABORATORIES LIMITED]",
+      "unresolved": "SPL's Dosage and Administration section is an ingredient list, not administration instructions."
+    }
+  ]
+}

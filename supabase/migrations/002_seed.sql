@@ -76,38 +76,41 @@ insert into circle_member (id, recipient_id, name, relation, channel, handle, sh
 
 -- ----------------------------------------------------------- medications --
 
--- Realistic Parkinson's + AF polypharmacy. rxcui is deliberately null: C11
--- fills it from RxNorm, and inventing identifiers would make C11 fetch the
--- wrong drug label.
+-- Realistic Parkinson's + AF polypharmacy.
+--
+-- rxcui values are the ones `tools/dailymed_extract.py` actually resolved from
+-- RxNorm when it built medication_rules.json — not invented. They are what
+-- RuleStore matches on, so a medication renamed on screen still finds its
+-- label. Change one only by re-running that script.
 --
 -- Levothyroxine and Adcal-D3 are both at 08:00 on purpose. That is the
 -- separation conflict C12 is built to notice — and it must produce a question
 -- for the pharmacist, never a schedule change (CLAUDE.md §2, rule 1).
-insert into medication (id, recipient_id, name, dose, schedule, scheduled_times,
+insert into medication (id, recipient_id, name, rxcui, dose, schedule, scheduled_times,
                         quantity_remaining, started_on, active) values
   ('44444444-4444-4444-8444-000000000001', '11111111-1111-4111-8111-111111111111',
-   'Co-careldopa (Sinemet)', '25/100mg', '4x daily: 8am, 12pm, 4pm, 8pm',
+   'Co-careldopa (Sinemet)', '103990', '25/100mg', '4x daily: 8am, 12pm, 4pm, 8pm',
    array['08:00','12:00','16:00','20:00']::time[], 96, date '2021-04-12', true),
   ('44444444-4444-4444-8444-000000000002', '11111111-1111-4111-8111-111111111111',
-   'Entacapone', '200mg', 'With each co-careldopa dose',
+   'Entacapone', '60307', '200mg', 'With each co-careldopa dose',
    array['08:00','12:00','16:00','20:00']::time[], 88, date '2023-02-06', true),
   ('44444444-4444-4444-8444-000000000003', '11111111-1111-4111-8111-111111111111',
-   'Rasagiline', '1mg', 'Once daily, morning',
+   'Rasagiline', '134748', '1mg', 'Once daily, morning',
    array['08:00']::time[], 22, date '2021-06-01', true),
   ('44444444-4444-4444-8444-000000000004', '11111111-1111-4111-8111-111111111111',
-   'Apixaban', '5mg', 'Twice daily, morning and evening',
+   'Apixaban', '1364430', '5mg', 'Twice daily, morning and evening',
    array['08:00','20:00']::time[], 44, date '2019-11-18', true),
   ('44444444-4444-4444-8444-000000000005', '11111111-1111-4111-8111-111111111111',
-   'Bisoprolol', '2.5mg', 'Once daily, morning',
+   'Bisoprolol', '142146', '2.5mg', 'Once daily, morning',
    array['08:00']::time[], 19, date '2019-11-18', true),
   ('44444444-4444-4444-8444-000000000006', '11111111-1111-4111-8111-111111111111',
-   'Atorvastatin', '20mg', 'Once daily, evening',
+   'Atorvastatin', '83367', '20mg', 'Once daily, evening',
    array['20:00']::time[], 27, date '2020-03-02', true),
   ('44444444-4444-4444-8444-000000000007', '11111111-1111-4111-8111-111111111111',
-   'Levothyroxine', '50mcg', 'Once daily, before breakfast',
+   'Levothyroxine', '10582', '50mcg', 'Once daily, before breakfast',
    array['08:00']::time[], 25, date '2018-09-14', true),
   ('44444444-4444-4444-8444-000000000008', '11111111-1111-4111-8111-111111111111',
-   'Adcal-D3', '1500mg/400iu', 'Twice daily, morning and evening',
+   'Adcal-D3', '608343', '1500mg/400iu', 'Twice daily, morning and evening',
    array['08:00','20:00']::time[], 51, date '2022-01-10', true);
 
 -- ------------------------------------------------------------- captures ---
