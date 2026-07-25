@@ -22,6 +22,8 @@ struct RootView: View {
     @ViewBuilder
     private func destination(for route: Route) -> some View {
         switch route {
+        case .voiceCapture:
+            VoiceCaptureView()
         case .textCapture:
             TextCaptureView()
         case .timeline:

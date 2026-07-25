@@ -116,6 +116,8 @@ enum Theme {
         static let micGlyph: CGFloat = 56
         /// Enough room to type a rambling paragraph without scrolling.
         static let textEditorMinHeight: CGFloat = 220
+        /// The live waveform while she is speaking.
+        static let waveformHeight: CGFloat = 120
         /// Hairline borders and dividers.
         static let hairline: CGFloat = 1
     }

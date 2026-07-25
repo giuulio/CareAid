@@ -17,7 +17,7 @@ struct HomeView: View {
                 Spacer(minLength: Theme.Space.l)
 
                 MicButton {
-                    // Capture arrives in C9. Text capture lands first, in C6.
+                    appState.path.append(.voiceCapture)
                 }
 
                 captureAlternatives

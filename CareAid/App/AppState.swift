@@ -6,6 +6,7 @@ import SwiftUI
 /// CLAUDE.md §8 caps navigation at two levels, so this is a flat list of
 /// destinations pushed onto a single stack — no nesting, no modals.
 enum Route: Hashable {
+    case voiceCapture
     case textCapture
     case timeline
     case schedule
