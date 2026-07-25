@@ -55,6 +55,7 @@ Approving an artifact does the real thing:
 - `family_update` → `wa.me` deep link via `openURL`, `MFMessageComposeViewController` fallback
 - `task` → local `UNUserNotificationCenter` notification
 - `question` → appointment question bank
+- `medication_update` → `UPDATE` the `medication` row, so the brief and the Schedule screen stay in agreement
 
 Add Info.plist keys now: `NSMicrophoneUsageDescription`, `NSSpeechRecognitionUsageDescription`, `NSCalendarsFullAccessUsageDescription`, `NSCameraUsageDescription`, `LSApplicationQueriesSchemes: [whatsapp]`.
 `feat: fan-out to calendar, whatsapp, reminders, question bank`

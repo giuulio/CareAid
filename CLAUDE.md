@@ -28,7 +28,7 @@ A caregiver speaks one messy, tired thought. One AI pass turns it into a timelin
 
 ## 2. Non-negotiable rules
 
-1. **Never medical advice.** CareAid never diagnoses, never suggests a cause, never recommends a treatment or a dose. It records what the human said and routes it. Where a medication timing conflict is detected, the output is always *a question for a pharmacist or GP* — never an instruction.
+1. **Never medical advice.** CareAid never diagnoses, never suggests a cause, never recommends a treatment or a dose. It records what the human said and routes it. Where a medication timing conflict is detected, the output is always *a question for a pharmacist or GP* — never an instruction. Recording a medication change the caregiver **reports** is not advice — but it must be attributed to whoever made the decision, and never inferred by us.
 2. **All data is synthetic.** No real patient data anywhere, ever. Hackathon rule.
 3. **Nothing leaves the device without a human tap.** Messages, calendar writes, and tasks are always `proposed` until approved.
 4. **Timeline events are the exception** — they write automatically. Recording needs no permission; *acting* does.
@@ -173,7 +173,7 @@ create table artifact (
   id uuid primary key default gen_random_uuid(),
   recipient_id uuid references recipient(id),
   capture_id uuid references capture(id),
-  kind text check (kind in ('task','calendar_event','family_update','question','timer')),
+  kind text check (kind in ('task','calendar_event','family_update','question','timer','medication_update')),
   payload jsonb not null,
   status text check (status in ('proposed','approved','dismissed','done','sent')) default 'proposed',
   confidence numeric,
@@ -198,6 +198,9 @@ create table brief (
 | `family_update` | `{ to_circle_member_id, to_name, channel, draft_text }` |
 | `question` | `{ question, for_specialty, priority }` |
 | `timer` | `{ label, fire_at, repeat? }` |
+| `medication_update` | `{ medication_id, medication_name, field, from, to, why }` — `field` is one of `dose`, `schedule`, `active`, `quantity_remaining`. `medication_name` is carried so the card renders without a join and a mis-resolved id can be caught. |
+
+Approving a `medication_update` writes to the `medication` table, which is what the Schedule screen and the C12 scheduler read. Without it the brief and the schedule drift apart silently.
 
 ### Brief content
 
@@ -263,6 +266,7 @@ create table brief (
 5. `headline` ≤ 60 characters, plain English, no clinical jargon the caregiver didn't use themselves.
 6. If something may need urgent attention, emit a `possible_escalation` flag whose action is "call 111 or the GP" — never a cause.
 7. Return JSON only, matching the schema exactly.
+8. Only emit a `medication_update` when the capture states the change outright — who changed it, and to what. Never infer one from a symptom, a missed dose or a pattern. If a change is implied but not stated, emit a `flag` instead. Phrase `why` as attribution ("Sarah said Dr Okafor increased it"), never as rationale.
 
 ---
 
