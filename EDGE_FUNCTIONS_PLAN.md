@@ -6,6 +6,8 @@ CareAid's entire product idea — "say it once, we do the rest" — depends on o
 
 Because nothing calls these functions yet, their *request* shape is ours to design; their *response* shape (for `extract`) is fixed by the Swift models and must match exactly, field-for-field, or the app will fail to decode at runtime with no compile-time warning.
 
+**Update:** a follow-up alignment pass against the live project turned up one blocker for `transcribe` specifically — `select * from storage.buckets` on `prpuxfpkxdsuxjihkkdt` returns empty. **No Storage bucket exists at all**, so `transcribe`'s planned flow (generate a signed URL for an uploaded audio file) has nothing to point at yet. This also affects `capture.media_url`, a real schema column with no write path anywhere in the Swift code — `photo` is a valid `capture.source`, but nothing uploads a photo to Storage or populates that column. Bucket creation is now folded into this plan as a prerequisite step for `transcribe` (see "Storage bucket" under Approach). Everything else checked out: an Explore pass grepping all Swift files under `Services/Supabase/` for table names, column names, `.storage.from(...)` calls, and `.rpc(...)` calls found zero mismatches against `001_schema.sql` and zero hidden bucket/RPC dependencies.
+
 ## Verified wire contract (read directly from source, not assumed)
 
 - `ExtractionResponse` top-level keys: `capture_id, events, artifacts, patterns, flags, brief` — **note: `brief`, not `brief_patch`**. The function must apply the LLM's `brief_patch` to the current brief and persist a new `brief` row (`version = previous + 1`), returning that full persisted row under `brief`. `brief` may be omitted/null if there's no patch.
@@ -82,6 +84,20 @@ Call orchestration (at most 3 LLM calls total — no over-engineered retry loop)
 
 Validation (`schema.ts`) is a hand-rolled ~40-line checker (no schema library needed): checks `kind` values against the DB CHECK-constraint sets, `severity` range, `headline` length ≤60, required fields per artifact payload kind. Cross-reference `medication_update.medication_id` and `family_update.to_circle_member_id` against ids actually present in the assembled context — if a referenced id doesn't exist, drop that one artifact (don't fail the whole batch) since the model may hallucinate a UUID.
 
+### Storage bucket (prerequisite for `transcribe`)
+
+No bucket exists yet on the live project — `transcribe` cannot function until one does. Create a `captures` bucket before deploying `transcribe`:
+
+```sql
+insert into storage.buckets (id, name, public)
+values ('captures', 'captures', false)
+on conflict (id) do nothing;
+```
+
+Keep it **private** (`public = false`) — consistent with RLS being off elsewhere for the demo, but audio recordings and photos are exactly the kind of blob that shouldn't be world-readable by URL guessing even in a synthetic-data hackathon build. `transcribe` reads it server-side with the service-role key via a short-lived signed URL (already in its design below), so privacy costs nothing functionally. Since RLS is off / no auth exists, Storage's own bucket-level policies aren't strictly needed for the demo, but leaving the bucket private is a one-line difference from public and avoids the anon key doubling as a way to enumerate/download every recording.
+
+This also unblocks (but does not itself implement) photo capture: `capture.media_url` is a real schema column with no current write path — out of scope for this plan, but worth flagging so whoever builds photo capture later knows the bucket will already exist.
+
 ### `transcribe/index.ts`
 
 Request: `{ storage_path: string, bucket?: string }` (default bucket `"captures"`). Flow: generate a short-lived signed URL server-side for the audio (service-role key), fetch it, POST as multipart form to ElevenLabs Scribe (`https://api.elevenlabs.io/v1/speech-to-text`), return `{ transcript: string }`. Explicit error handling: missing/invalid path → 400, not found in storage → 404, storage fetch failure → 502, ElevenLabs non-2xx → 502 with the response body passed through for debugging. Empty transcript is not an error — return it and let the (future) client decide, consistent with "never lose input."
@@ -96,19 +112,24 @@ Set via `mcp__claude_ai_Supabase__deploy_edge_function` or the Supabase dashboar
 
 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by the platform into every Edge Function — do not set manually. Add an `.env.example` at repo root documenting the four custom keys (placeholders only) for whoever fills in real secrets.
 
+### Not blocking, optional cleanup
+
+Supabase's performance advisor flags a handful of `INFO`-level items unrelated to these two functions, surfaced by the same alignment pass: `capture.author_id`, `capture.recipient_id`, `circle_member.recipient_id`, `medication.recipient_id`, and `brief.source_capture_id` have no covering index on their foreign key. Harmless at current (seed-data) row counts and not worth spending hackathon time on, but a one-line `create index` each if this ever needs to handle real query volume. Not part of this plan's scope.
+
 ## Critical files
 
 - `supabase/functions/extract/index.ts` (new)
 - `supabase/functions/_shared/extraction/{context,prompt,schema,persist}.ts` (new)
 - `supabase/functions/_shared/llm/{provider,anthropic,openai}.ts` (new)
 - `supabase/functions/transcribe/index.ts` (new)
+- Storage: `captures` bucket (new — create via `execute_sql`/dashboard before deploying `transcribe`; no local file, lives only in the live project)
 - `CareAid/CareAid/Models/ExtractionResponse.swift`, `Artifact.swift`, `Brief.swift`, `Coding.swift` — fixed contract references, do not change
 - `supabase/migrations/001_schema.sql` — CHECK constraints source of truth
 - `supabase/migrations/002_seed.sql` — test data (recipient `11111111-…`, Tom = circle member `33333333-3333-4333-8333-000000000001`)
 
 ## Verification
 
-1. Deploy both functions via `mcp__claude_ai_Supabase__deploy_edge_function` to project `prpuxfpkxdsuxjihkkdt`; set the four secrets above.
+1. Create the `captures` Storage bucket (see "Storage bucket" above) and confirm with `select id, public from storage.buckets;` before deploying `transcribe` — it will fail every request otherwise. Deploy both functions via `mcp__claude_ai_Supabase__deploy_edge_function` to project `prpuxfpkxdsuxjihkkdt`; set the four secrets above.
 2. Insert a fresh test capture via `execute_sql` using CLAUDE.md §9's demo script verbatim as `raw_text` (recipient `11111111-1111-4111-8111-111111111111`, author `22222222-2222-4222-8222-222222222222`, source `text`) — this is the one case where CLAUDE.md fully specifies the expected output, making it the ideal end-to-end test.
 3. `curl -X POST {project_url}/functions/v1/extract -d '{"capture_id":"<id>"}'` and confirm: one `medication` timeline_event, a `task` artifact (ring the surgery), a `family_update` to Tom (`to_circle_member_id` matches the seeded UUID), a `question` re night-time freezing, a `calendar_event` for 14 August, non-empty `patterns` ("third missed evening dose"), and **no** `medication_update` (nothing stated a dose changed — this exercises prompt rule 8 against a model that might wrongly infer one from "forgotten her evening Sinemet").
 4. Verify persistence directly with `execute_sql`: `select kind,status,payload from artifact where capture_id=...`, `select kind,headline,severity from timeline_event where capture_id=...`, `select processed_at, model_raw->>'provider' from capture where id=...`, `select version,content from brief where recipient_id=... order by version desc limit 1`.
