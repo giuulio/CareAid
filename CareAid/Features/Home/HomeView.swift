@@ -50,7 +50,9 @@ struct HomeView: View {
     }
 
     private var typeButton: some View {
-        SecondaryButton("Type it", systemImage: "keyboard") {}
+        SecondaryButton("Type it", systemImage: "keyboard") {
+            appState.path.append(.textCapture)
+        }
     }
 
     private var photoButton: some View {

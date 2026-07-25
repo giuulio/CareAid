@@ -76,8 +76,10 @@ xcodebuild -scheme CareAid -destination 'platform=iOS Simulator,name=iPhone 17' 
 To see the UI, boot the simulator, then screenshot and view the image:
 
 ```bash
-xcrun simctl io booted screenshot /tmp/kin.png
+xcrun simctl io booted screenshot /tmp/careaid.png
 ```
+
+**If `simctl launch` reports "launched, but has since exited or crashed" with no crash log**, check the console — it is usually `Library not loaded: @rpath/CareAid.debug.dylib`. The build succeeds but the incremental build drops the debug dylib the binary links against. `xcodebuild clean` then rebuild fixes it. Nothing to do with your code; don't go hunting.
 
 ---
 

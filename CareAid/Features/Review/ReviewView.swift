@@ -4,12 +4,17 @@ struct ReviewView: View {
 
     @State private var viewModel: ReviewViewModel
 
-    init(response: ExtractionResponse) {
+    /// What she actually said. Every card on this screen traces back to it
+    /// (CLAUDE.md §2, rule 6).
+    private let transcript: String
+
+    init(response: ExtractionResponse, transcript: String = "") {
         _viewModel = State(
             initialValue: ReviewViewModel(
                 response: response
             )
         )
+        self.transcript = transcript
     }
 
     var body: some View {
@@ -21,7 +26,7 @@ struct ReviewView: View {
                         .font(.title2)
                         .bold()
 
-                    Text("Your recording will appear here.")
+                    Text(transcript.isEmpty ? "Your recording will appear here." : "“\(transcript)”")
                         .font(.body)
                         .foregroundStyle(.secondary)
                 }

@@ -114,6 +114,8 @@ enum Theme {
         static let micDiameter: CGFloat = 168
         /// The mic glyph inside it. Fixed — the circle does not grow with type.
         static let micGlyph: CGFloat = 56
+        /// Enough room to type a rambling paragraph without scrolling.
+        static let textEditorMinHeight: CGFloat = 220
         /// Hairline borders and dividers.
         static let hairline: CGFloat = 1
     }
