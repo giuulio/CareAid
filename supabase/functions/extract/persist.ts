@@ -64,17 +64,46 @@ async function insertEvents(db: SupabaseClient, capture: Capture, output: ModelO
 }
 
 async function insertArtifacts(db: SupabaseClient, capture: Capture, output: ModelOutput) {
+  // A model can invent a plausible UUID. These payloads are jsonb so Postgres
+  // won't catch it — the failure would surface in C8, when approving the card
+  // tries to message a circle member or update a medication that isn't there.
+  // Drop the offending artifact rather than failing the whole batch.
+  const [circle, meds] = await Promise.all([
+    db.from("circle_member").select("id").eq("recipient_id", capture.recipient_id),
+    db.from("medication").select("id").eq("recipient_id", capture.recipient_id),
+  ]);
+  const knownCircle = new Set((circle.data ?? []).map((r) => r.id));
+  const knownMeds = new Set((meds.data ?? []).map((r) => r.id));
+
+  function referencesRealRow(kind: string, payload: Record<string, unknown>): boolean {
+    if (kind === "family_update") {
+      const id = payload.to_circle_member_id;
+      // Null is fine — the app falls back to the SMS composer.
+      return id == null || knownCircle.has(id as string);
+    }
+    if (kind === "medication_update") {
+      return knownMeds.has(payload.medication_id as string);
+    }
+    return true;
+  }
+
   // Flatten the per-kind arrays back into one artifact table (CLAUDE.md §7).
   const rows = ARTIFACT_KINDS.flatMap(({ field, kind }) => {
     const entries = (output[field] ?? []) as { confidence: number | null; payload: unknown }[];
-    return entries.map((entry) => ({
-      recipient_id: capture.recipient_id,
-      capture_id: capture.id,
-      kind,
-      payload: entry.payload,
-      status: "proposed", // §2 rule 3 — nothing acts without a tap
-      confidence: entry.confidence,
-    }));
+    return entries
+      .filter((entry) => {
+        const ok = referencesRealRow(kind, entry.payload as Record<string, unknown>);
+        if (!ok) console.warn(`dropped ${kind}: references a row that does not exist`);
+        return ok;
+      })
+      .map((entry) => ({
+        recipient_id: capture.recipient_id,
+        capture_id: capture.id,
+        kind,
+        payload: entry.payload,
+        status: "proposed", // §2 rule 3 — nothing acts without a tap
+        confidence: entry.confidence,
+      }));
   });
 
   if (!rows.length) return [];

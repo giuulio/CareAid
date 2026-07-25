@@ -1,5 +1,47 @@
 # Plan: `extract` and `transcribe` Edge Functions
 
+---
+
+> ## STATUS: `extract` is built, deployed and verified — don't rebuild it
+>
+> This plan was written when both functions were `.gitkeep` placeholders. That
+> is no longer true for `extract` (commits `4ce5ee0`, `f68b82d`). **`transcribe`
+> is still unbuilt and this plan remains the right guide for it.**
+>
+> The analysis above and below was independently correct — it derived the same
+> wire contract from the Swift models, and the verification steps were followed
+> almost exactly. Live result against the §9 demo capture: **all six required
+> outputs present**, correct London↔UTC conversion, and re-running the same
+> `capture_id` replaced rows rather than doubling them.
+>
+> **Where the built version differs from this plan, and why:**
+>
+> - **Flat `extract/` layout, no `_shared/`.** Only one function exists so far;
+>   `_shared` can be introduced when `transcribe` lands and there is something
+>   to actually share.
+> - **The schema is enforced by the API, not hand-validated.** Both providers
+>   support structured outputs, so the ~40-line checker isn't needed for shape.
+>   One consequence: OpenAI's strict mode rejects `anyOf`, so the model returns
+>   **per-kind artifact arrays** which the function flattens into `artifact`
+>   rows. The response the app sees is unchanged. See CLAUDE.md §7.
+> - **No automatic provider failover.** `LLM_PROVIDER` selects one, matching
+>   CLAUDE.md §3's "selected by `LLM_PROVIDER` env var". Worth revisiting — but
+>   note it would be dead code today: only OpenAI is funded, so failing over to
+>   Anthropic would just fail differently. Revisit if an Anthropic key lands.
+> - **`medication_changes` folds into `recent_changes`, not `medications`.**
+>   Both are guesses at an underspecified field; `recent_changes` is `[String]`
+>   so the patch entries drop straight in, where matching into `medications` by
+>   name needs parsing prose into structured fields. Flagging as an
+>   interpretation, same as this plan does.
+> - **Hallucinated-ID guard adopted from this plan** — good catch, now
+>   implemented in `persist.ts`.
+>
+> **Still open from this plan and worth doing:** the `captures` Storage bucket
+> (a genuine blocker — `transcribe` cannot work without it), `transcribe`
+> itself, and the `capture.media_url` write path for photo capture.
+
+---
+
 ## Context
 
 CareAid's entire product idea — "say it once, we do the rest" — depends on one Supabase Edge Function, `extract`, turning a caregiver's raw capture into timeline events and proposed artifacts. Right now `supabase/functions/extract/` and `supabase/functions/transcribe/` contain only `.gitkeep` placeholders; nothing has been built or deployed (`list_edge_functions` on the live project `prpuxfpkxdsuxjihkkdt` returns zero functions). Everything upstream is ready and waiting: the DB schema and seed data are live and correct, and the Swift `Codable` models the app will eventually decode (`ExtractionResponse`, `Artifact`, `Brief`, `Coding.swift`) are already fully written and fixed — they define the exact wire contract this plan must produce. This plan is scoped **only** to the two Edge Functions (backend). Building the Swift-side Capture/Review/Speech/FanOut/Scheduler code that will eventually call these functions is explicitly deferred to later work.
