@@ -220,7 +220,13 @@ create table brief (
 
 **Context assembled server-side and injected:** recipient profile, active medications with scheduled times, circle members *by name and relation* (so the model resolves "Tom" → a `circle_member_id`), upcoming appointments, current brief, last 90 days of timeline headlines (one line each — this is what makes pattern detection possible), and current datetime in Europe/London.
 
-**Response schema — mirror this exactly as Swift `Codable` structs:**
+**The model never touches the database.** No tools, no function calling, no agentic loop. The Edge Function queries Postgres itself and injects the results as text. One call in, one JSON object out — predictable latency, and the model physically cannot write anything.
+
+**The Edge Function owns every extraction write.** It validates the model's JSON against the `CHECK` constraints in §6, inserts `timeline_event` rows (auto-committed) and `artifact` rows (`proposed`), stamps `capture.processed_at`, stores the raw response in `capture.model_raw`, then returns the persisted rows **including their ids**. The app never inserts events or artifacts itself; it reads, and it PATCHes `artifact.status` on approval. Re-running `extract` for a capture replaces that capture's rows, so a retry can never double-write.
+
+`patterns` and `flags` have no table. They ride back in the response to drive the Review sheet, and are recoverable from `model_raw`.
+
+**Response schema.** The LLM emits exactly this; the app receives the same shape with database ids added. Mirror both as Swift `Codable` structs:
 
 ```json
 {

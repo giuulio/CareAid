@@ -18,7 +18,11 @@ Components: `Card`, `PrimaryButton` (72pt), `SecondaryButton`, `ScreenScaffold`,
 `feat: theme tokens, base components, navigation shell`
 
 ### C2 · Models — P0
-All `Codable` structs from `CLAUDE.md` §6 and §7, including `ExtractionResult` and typed artifact payloads. Snake_case ↔ camelCase via `CodingKeys`. Dates as ISO8601 UTC.
+All `Codable` structs from `CLAUDE.md` §6 and §7. Snake_case ↔ camelCase via `CodingKeys`. Dates as ISO8601 UTC. `kind` and `severity` become Swift enums whose raw values match the §6 `CHECK` constraints exactly, so an invalid value fails at decode rather than at insert.
+
+`artifact.payload` is an **enum with associated values**, decoded by switching on `kind` — C8's fan-out switches on the same thing, and this way the compiler catches a missing case.
+
+Per §7 the Edge Function does the writing, so the app needs the row models plus one response envelope — no separate "unsaved" variants.
 `feat: data models and extraction schema`
 
 ### C3 · Database — P0
@@ -33,11 +37,11 @@ Add `supabase-swift` via SPM. Client wrapper plus repositories for each table. T
 `feat: supabase client, repositories, timeline reads live data`
 
 ### C5 · Extraction Edge Function — P0
-`supabase/functions/extract/index.ts`. Assembles context per §7, calls the LLM, returns the schema. **Provider behind one interface, `LLM_PROVIDER` env var** — Anthropic primary, OpenAI fallback, both implemented. Keys as Supabase secrets, never in the app. Validate the response shape and repair-or-retry once on malformed JSON.
+`supabase/functions/extract/index.ts`. Assembles context per §7, calls the LLM, **writes the results, and returns the persisted rows with their ids**. **Provider behind one interface, `LLM_PROVIDER` env var** — Anthropic primary, OpenAI fallback, both implemented. Keys as Supabase secrets, never in the app. Validate the response shape and repair-or-retry once on malformed JSON. Writes are keyed on `capture_id` and replace any previous rows for that capture, so a retry is safe.
 `feat: extraction edge function with anthropic and openai providers`
 
 ### C6 · Text capture → persist — P0
-Typed capture → `capture` row → call `extract` → write `timeline_event` rows automatically and `artifact` rows as `proposed`. No UI beyond a debug text field yet.
+Typed capture → `capture` row (written **before** the LLM call, so the note survives a failed extraction) → call `extract` → decode the returned rows. The function does the inserting; the app decodes and displays. No UI beyond a debug text field yet.
 `feat: text capture pipeline end to end`
 
 ### C7 · Review sheet — P0
