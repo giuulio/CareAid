@@ -5,7 +5,7 @@ import Foundation
 /// Supabase credentials are read from `Supabase.plist` in the app bundle so they
 /// stay out of source. Third-party AI keys are never here — those live as
 /// Supabase secrets and are only ever used inside Edge Functions.
-enum Config {
+nonisolated enum Config {
 
     // MARK: - Supabase
 
