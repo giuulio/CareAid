@@ -28,7 +28,9 @@ Per §7 the Edge Function does the writing, so the app needs the row models plus
 ### C3 · Database — P0
 `supabase/migrations/001_schema.sql` (verbatim from §6) and `002_seed.sql`. Seed must be **idempotent and re-runnable** — truncate then insert; we'll reset twenty times tonight.
 
-Seed: Margaret, Sarah (work hours Mon–Fri 09:00–17:30, standup 09:00–09:30), Tom (whatsapp), Joy (07:30/18:00 visits), 8 medications with realistic Parkinson's + AF polypharmacy, Dr Okafor appointment 14 Aug, and **90 days of timeline events** — including exactly three missed evening levodopa doses in the current month, spaced realistically.
+Seed: Margaret, Sarah (work hours Mon–Fri 09:00–17:30, standup 09:00–09:30), Tom (whatsapp), Joy (07:30/18:00 visits), 8 medications with realistic Parkinson's + AF polypharmacy, Dr Okafor appointment 14 Aug, and **90 days of timeline events**.
+
+**Two** seeded missed evening levodopa doses, not three. §9's demo capture *is* the third and writes its own timeline entry when Sarah records it — seed three and the pattern banner reads "fourth" on stage. Space them realistically.
 `feat: database schema and synthetic seed data`
 
 ### C4 · Supabase client — P0
