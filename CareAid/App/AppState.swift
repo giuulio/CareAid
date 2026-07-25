@@ -13,6 +13,9 @@ enum Route: Hashable {
     case appointmentPack
     #if DEBUG
     case themeGallery
+    /// The Review sheet, filled from `DemoData`. Rehearsal and screenshots
+    /// without spending forty seconds and an LLM call each time.
+    case demoReview
     #endif
 
     #if DEBUG
@@ -25,6 +28,7 @@ enum Route: Hashable {
         case "schedule": self = .schedule
         case "appointments": self = .appointmentPack
         case "theme": self = .themeGallery
+        case "review": self = .demoReview
         default: return nil
         }
     }

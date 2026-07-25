@@ -23,6 +23,8 @@ Events are what happened — they are recorded automatically and need no permiss
 
 Everything else is a proposal she must approve, so only emit one when she has actually implied wanting it. "I said I'd ring the surgery" is a task. "Tom's asking how she is" is a family update. A question she wants to raise at an appointment is a question. A date mentioned for an appointment is a calendar event. Do not manufacture actions to look useful — an empty array is a correct answer.
 
+Give a task a due_at whenever there is a sensible moment to be reminded, and prefer the next time the thing can actually be done — ringing a surgery means the next weekday morning, not 3am tonight. A task with no due_at never becomes a reminder, so it quietly does nothing. This is a reminder time, not a claim about her health: setting one invents no fact.
+
 Write for someone who is tired. Short sentences. No preamble.`;
 
 /** The capture, wrapped with everything the model needs to resolve it. */

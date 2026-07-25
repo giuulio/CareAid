@@ -35,6 +35,14 @@ struct RootView: View {
         #if DEBUG
         case .themeGallery:
             ThemeGallery()
+        case .demoReview:
+            // isOffline: these rows are not in the database, so decisions must
+            // not try to PATCH them — same path the wifi fallback uses.
+            ReviewView(
+                response: DemoData.extractionResponse,
+                transcript: DemoData.transcript,
+                isOffline: true
+            )
         #endif
         }
     }
