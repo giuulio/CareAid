@@ -1,22 +1,26 @@
 import Foundation
 
-/// What the `extract` Edge Function returns after it has written everything.
+/// What the extraction service returns after processing a capture.
 ///
-/// Per CLAUDE.md §7 the function owns every extraction write, so these events
-/// and artifacts are already persisted and carry real database ids. The app
-/// decodes, renders the Review sheet, and PATCHes `artifact.status` on
-/// approval — it never inserts.
+/// Per the project specification (§7), events and artifacts have already been
+/// written by the backend. The app decodes the response, displays the review
+/// screen, and updates artifact status after the user's decision.
 nonisolated struct ExtractionResponse: Codable, Hashable, Sendable {
     let captureID: UUID
+
     /// Auto-committed. Shown greyed and unactionable at the top of Review.
     let events: [TimelineEvent]
+
     /// All `proposed`. Each gets a card.
     let artifacts: [Artifact]
-    /// Drives the banner above the cards. No table — transient.
+
+    /// Drives the banner above the cards. Not persisted separately.
     let patterns: [Pattern]
-    /// Things the model was not sure enough about to guess. No table.
+
+    /// Things the model was not certain enough about to guess.
     let flags: [Flag]
-    /// The new brief version, if `brief_patch` produced one.
+
+    /// The new brief version, if generated.
     let brief: Brief?
 
     enum CodingKeys: String, CodingKey {
@@ -24,13 +28,17 @@ nonisolated struct ExtractionResponse: Codable, Hashable, Sendable {
         case captureID = "capture_id"
     }
 
+    /// Used for previews, static demo data and tests.
+    ///
+    /// Production responses continue to be decoded from backend JSON using
+    /// `init(from:)`.
     init(
         captureID: UUID,
-        events: [TimelineEvent] = [],
-        artifacts: [Artifact] = [],
-        patterns: [Pattern] = [],
-        flags: [Flag] = [],
-        brief: Brief? = nil
+        events: [TimelineEvent],
+        artifacts: [Artifact],
+        patterns: [Pattern],
+        flags: [Flag],
+        brief: Brief?
     ) {
         self.captureID = captureID
         self.events = events
@@ -42,6 +50,7 @@ nonisolated struct ExtractionResponse: Codable, Hashable, Sendable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+
         captureID = try container.decode(UUID.self, forKey: .captureID)
         events = try container.decodeIfPresent([TimelineEvent].self, forKey: .events) ?? []
         artifacts = try container.decodeIfPresent([Artifact].self, forKey: .artifacts) ?? []
@@ -53,7 +62,7 @@ nonisolated struct ExtractionResponse: Codable, Hashable, Sendable {
 
 /// "That's the third missed evening dose this month."
 ///
-/// Only possible because seeded history exists — CLAUDE.md §9.
+/// Only possible because historical context exists in the system data.
 nonisolated struct Pattern: Codable, Hashable, Sendable {
     var observation: String
     var evidenceEventIDs: [UUID]
@@ -63,24 +72,36 @@ nonisolated struct Pattern: Codable, Hashable, Sendable {
         case evidenceEventIDs = "evidence_event_ids"
     }
 
-    init(observation: String, evidenceEventIDs: [UUID] = []) {
+    init(
+        observation: String,
+        evidenceEventIDs: [UUID] = []
+    ) {
         self.observation = observation
         self.evidenceEventIDs = evidenceEventIDs
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        observation = try container.decode(String.self, forKey: .observation)
-        evidenceEventIDs = try container.decodeIfPresent([UUID].self, forKey: .evidenceEventIDs) ?? []
+
+        observation = try container.decode(
+            String.self,
+            forKey: .observation
+        )
+
+        evidenceEventIDs = try container.decodeIfPresent(
+            [UUID].self,
+            forKey: .evidenceEventIDs
+        ) ?? []
     }
 }
 
-/// Something ambiguous. Per §7 rule 2, low confidence produces one of these
-/// rather than a guess.
+/// Something ambiguous that needs clarification rather than an assumption.
 nonisolated struct Flag: Codable, Hashable, Sendable {
     var type: FlagType
+
     /// The words that were unclear, e.g. "the 14th".
     var text: String?
-    /// What to put to the caregiver, e.g. "Is the neurology appointment 14 August?"
+
+    /// The clarification shown to the caregiver.
     var ask: String
 }
