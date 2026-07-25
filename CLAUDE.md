@@ -45,7 +45,7 @@ A caregiver speaks one messy, tired thought. One AI pass turns it into a timelin
 | Backend | Supabase — Postgres, Storage, Edge Functions (Deno/TypeScript) |
 | LLM | Anthropic Claude primary, OpenAI fallback. **Both behind one interface**, selected by `LLM_PROVIDER` env var. Both are hackathon sponsors — we support both deliberately. |
 | Speech-to-text | ElevenLabs Scribe via Edge Function. Apple `SFSpeechRecognizer` as offline fallback. |
-| Med rules | DailyMed SPL, extracted **offline** by a Python script into a static JSON file shipped in the bundle. No runtime dependency. |
+| Med rules | DailyMed SPL/API for medication reference data. No medical advice, diagnosis, or treatment recommendations. |
 | Calendar | EventKit (full access — we read the caregiver's calendar too) |
 | Messaging | `wa.me` deep link; `MFMessageComposeViewController` fallback |
 | PDF | SwiftUI `ImageRenderer` → PDF → `ShareLink` |
