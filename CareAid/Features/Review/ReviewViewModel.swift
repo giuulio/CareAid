@@ -48,12 +48,28 @@ final class ReviewViewModel {
         artifacts.contains { decision(for: $0) == .pending }
     }
 
+    /// Do the thing first, then record that it happened. If the calendar write
+    /// or the permission prompt fails, the card stays undecided rather than
+    /// claiming success she'd only discover was false later.
     func approve(_ artifact: Artifact) async {
-        await setStatus(.approved, for: artifact, then: .approved)
+        decisions[artifact.id] = .working
+        do {
+            try await FanOutService().perform(artifact)
+            try await ArtifactRepository().setStatus(.approved, for: artifact.id)
+            decisions[artifact.id] = .approved
+        } catch {
+            decisions[artifact.id] = .failed(error.localizedDescription)
+        }
     }
 
     func dismiss(_ artifact: Artifact) async {
-        await setStatus(.dismissed, for: artifact, then: .dismissed)
+        decisions[artifact.id] = .working
+        do {
+            try await ArtifactRepository().setStatus(.dismissed, for: artifact.id)
+            decisions[artifact.id] = .dismissed
+        } catch {
+            decisions[artifact.id] = .failed(error.localizedDescription)
+        }
     }
 
     func approveAll() async {

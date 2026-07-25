@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Only the keys Xcode's INFOPLIST_KEY_* build settings cannot express.
+  Everything else (usage descriptions, orientation, scene manifest) is still
+  generated from build settings and merged into this file at build time.
+
+  LSApplicationQueriesSchemes is what lets canOpenURL("whatsapp://") answer
+  truthfully. Without it iOS always says no, the WhatsApp branch never runs,
+  and a phone without WhatsApp installed would silently fall through to Safari
+  instead of Messages.
+-->
+<plist version="1.0">
+<dict>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>whatsapp</string>
+		<string>sms</string>
+	</array>
+</dict>
+</plist>
