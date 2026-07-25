@@ -1,0 +1,119 @@
+# Plan: `extract` and `transcribe` Edge Functions
+
+## Context
+
+CareAid's entire product idea — "say it once, we do the rest" — depends on one Supabase Edge Function, `extract`, turning a caregiver's raw capture into timeline events and proposed artifacts. Right now `supabase/functions/extract/` and `supabase/functions/transcribe/` contain only `.gitkeep` placeholders; nothing has been built or deployed (`list_edge_functions` on the live project `prpuxfpkxdsuxjihkkdt` returns zero functions). Everything upstream is ready and waiting: the DB schema and seed data are live and correct, and the Swift `Codable` models the app will eventually decode (`ExtractionResponse`, `Artifact`, `Brief`, `Coding.swift`) are already fully written and fixed — they define the exact wire contract this plan must produce. This plan is scoped **only** to the two Edge Functions (backend). Building the Swift-side Capture/Review/Speech/FanOut/Scheduler code that will eventually call these functions is explicitly deferred to later work.
+
+Because nothing calls these functions yet, their *request* shape is ours to design; their *response* shape (for `extract`) is fixed by the Swift models and must match exactly, field-for-field, or the app will fail to decode at runtime with no compile-time warning.
+
+## Verified wire contract (read directly from source, not assumed)
+
+- `ExtractionResponse` top-level keys: `capture_id, events, artifacts, patterns, flags, brief` — **note: `brief`, not `brief_patch`**. The function must apply the LLM's `brief_patch` to the current brief and persist a new `brief` row (`version = previous + 1`), returning that full persisted row under `brief`. `brief` may be omitted/null if there's no patch.
+- Each artifact in the response is `{id, recipient_id, capture_id, kind, payload, status, confidence, created_at, actioned_at}` — `kind` is a **sibling** of `payload`, not nested inside it (confirmed in `Artifact.swift`'s custom decoder).
+- Payload field names per kind (exact, snake_case on the wire):
+  - `task`: `title, due_at?, why`
+  - `calendar_event`: `title, starts_at, ends_at?, location?, notes?, reminders_min:[Int]`
+  - `family_update`: `to_circle_member_id?, to_name, channel, draft_text`
+  - `question`: `question, for_specialty?, priority?`
+  - `timer`: `label, fire_at, repeat?` (JSON key is literally `"repeat"`)
+  - `medication_update`: `medication_id, medication_name, field (dose|schedule|active|quantity_remaining), from?, to, why`
+- Timestamps: the app's decoder (`Coding.swift`) accepts plain ISO8601 (`2026-07-24T20:00:00Z`) or ISO8601-with-fractional-seconds — **always emit UTC with a literal `Z`**. `date` columns need `yyyy-MM-dd`; `time` columns need `HH:mm[:ss]`.
+- `BriefContent` has no `medication_changes` field (only `medications: [BriefMedication]`), even though CLAUDE.md's example `brief_patch` includes one. Resolve by folding `medication_changes` entries into updates of the `medications` array (matched by name) when merging the patch — document this as an interpretation, since it's not spelled out anywhere.
+- `Flag.type` is an open string wrapper (not DB-constrained) — no need to validate against a fixed set. `timeline_event.kind`, `artifact.kind`, and `medication_update.field` **are** DB-CHECK-constrained and must be validated strictly before insert.
+- DB writes: `.select()` results from Postgres/PostgREST come back snake_case already, matching the Swift `CodingKeys` directly — no manual field renaming needed for persisted rows, only for the top-level response envelope.
+
+## Approach
+
+### File layout
+
+```
+supabase/
+  functions/
+    _shared/
+      cors.ts              # shared CORS headers
+      types.ts             # shared TS types for the LLM output + persisted rows
+      llm/
+        provider.ts         # LLMProvider interface, primary/fallback selection
+        anthropic.ts         # Claude implementation (plain fetch, no SDK)
+        openai.ts             # OpenAI implementation (plain fetch, JSON mode)
+      extraction/
+        context.ts           # assembleContext(recipientId) -> ContextBundle
+        prompt.ts             # buildSystemPrompt(), buildUserPrompt(ctx, rawText)
+        schema.ts               # validateExtractionJSON(obj)
+        persist.ts                # replaceCaptureResults(...)
+    extract/index.ts       # thin HTTP orchestrator
+    transcribe/index.ts    # thin HTTP orchestrator
+```
+
+Before writing to `_shared/`, check whether `mcp__claude_ai_Supabase__deploy_edge_function` accepts multi-file bundles with relative imports, or only a single file — this determines whether `_shared/` survives as real deployed files or needs to be inlined per function at deploy time. Author with `_shared/` regardless, for local clarity/version control.
+
+Skip `supabase/config.toml` (only needed for local `supabase functions serve`, not used here). A minimal `deno.json` is worth adding purely for editor type-checking (`Deno.serve`, `Deno.env`).
+
+### `extract/index.ts` — request/response flow
+
+Request: `{ capture_id: string }`. The function always re-reads `raw_text` from the `capture` row (already written client-side before this call, per the "never lose input" rule) rather than accepting raw text directly — keeps retries idempotent (`POST` the same `capture_id` again).
+
+Flow:
+1. Look up `capture` by id; 404 if missing, 422 if `raw_text` is null.
+2. `assembleContext(recipientId)` — parallel queries: recipient profile, active medications, circle members, next few upcoming appointments (`timeline_event` kind=`appointment`, future), current brief (latest version), last 90 days of timeline headlines (chronological, one line each), plus current datetime computed for Europe/London via `Intl.DateTimeFormat`.
+3. Build system + user prompts (`prompt.ts`) encoding CLAUDE.md §7's 8 rules, the exact output schema/vocabulary (event kinds, artifact kinds, payload shapes, severity range), and "return JSON only, no markdown fences."
+4. Call the LLM via the dual-provider abstraction (below), get back parsed+validated JSON.
+5. `replaceCaptureResults(...)`: delete any existing `timeline_event`/`artifact` rows for this `capture_id` (retry-safety), insert new `timeline_event` rows (auto-committed), insert new `artifact` rows (always `status='proposed'` — rule 3), merge `brief_patch` into a new `brief` version if present, stamp `capture.processed_at` + `capture.model_raw` (raw LLM text + provider + parsed JSON — no Swift model reads this, so it's free-form).
+6. Return `{capture_id, events, artifacts, patterns, flags, brief}` with real DB ids from the insert `.select()` results.
+
+### Dual-provider LLM abstraction (`_shared/llm/`)
+
+```ts
+interface LLMProvider {
+  name: "anthropic" | "openai";
+  complete(system: string, user: string): Promise<{raw: string; provider: string}>;
+}
+```
+
+`primaryProvider(env)` / `fallbackProvider(env)` pick based on `LLM_PROVIDER` (default `anthropic`). Plain `fetch()` calls — no SDK dependency, keeps the Deno bundle small:
+- Anthropic: `POST /v1/messages` with `anthropic-version` header.
+- OpenAI: `POST /v1/chat/completions` with `response_format: {type: "json_object"}` for a real JSON-mode guarantee.
+
+Call orchestration (at most 3 LLM calls total — no over-engineered retry loop):
+1. Call primary. If HTTP/network failure → skip straight to fallback.
+2. If primary returns malformed/invalid JSON → one repair attempt with the same provider (append a "your JSON was invalid, error: X, return corrected JSON only" nudge).
+3. If still invalid → call fallback provider once.
+4. If all three attempts fail → throw (surfaced as a 500).
+
+Validation (`schema.ts`) is a hand-rolled ~40-line checker (no schema library needed): checks `kind` values against the DB CHECK-constraint sets, `severity` range, `headline` length ≤60, required fields per artifact payload kind. Cross-reference `medication_update.medication_id` and `family_update.to_circle_member_id` against ids actually present in the assembled context — if a referenced id doesn't exist, drop that one artifact (don't fail the whole batch) since the model may hallucinate a UUID.
+
+### `transcribe/index.ts`
+
+Request: `{ storage_path: string, bucket?: string }` (default bucket `"captures"`). Flow: generate a short-lived signed URL server-side for the audio (service-role key), fetch it, POST as multipart form to ElevenLabs Scribe (`https://api.elevenlabs.io/v1/speech-to-text`), return `{ transcript: string }`. Explicit error handling: missing/invalid path → 400, not found in storage → 404, storage fetch failure → 502, ElevenLabs non-2xx → 502 with the response body passed through for debugging. Empty transcript is not an error — return it and let the (future) client decide, consistent with "never lose input."
+
+### Secrets
+
+Set via `mcp__claude_ai_Supabase__deploy_edge_function` or the Supabase dashboard (never in git, never in the app bundle):
+- `LLM_PROVIDER` (`anthropic` | `openai`, default `anthropic`)
+- `ANTHROPIC_API_KEY`
+- `OPENAI_API_KEY`
+- `ELEVENLABS_API_KEY`
+
+`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by the platform into every Edge Function — do not set manually. Add an `.env.example` at repo root documenting the four custom keys (placeholders only) for whoever fills in real secrets.
+
+## Critical files
+
+- `supabase/functions/extract/index.ts` (new)
+- `supabase/functions/_shared/extraction/{context,prompt,schema,persist}.ts` (new)
+- `supabase/functions/_shared/llm/{provider,anthropic,openai}.ts` (new)
+- `supabase/functions/transcribe/index.ts` (new)
+- `CareAid/CareAid/Models/ExtractionResponse.swift`, `Artifact.swift`, `Brief.swift`, `Coding.swift` — fixed contract references, do not change
+- `supabase/migrations/001_schema.sql` — CHECK constraints source of truth
+- `supabase/migrations/002_seed.sql` — test data (recipient `11111111-…`, Tom = circle member `33333333-3333-4333-8333-000000000001`)
+
+## Verification
+
+1. Deploy both functions via `mcp__claude_ai_Supabase__deploy_edge_function` to project `prpuxfpkxdsuxjihkkdt`; set the four secrets above.
+2. Insert a fresh test capture via `execute_sql` using CLAUDE.md §9's demo script verbatim as `raw_text` (recipient `11111111-1111-4111-8111-111111111111`, author `22222222-2222-4222-8222-222222222222`, source `text`) — this is the one case where CLAUDE.md fully specifies the expected output, making it the ideal end-to-end test.
+3. `curl -X POST {project_url}/functions/v1/extract -d '{"capture_id":"<id>"}'` and confirm: one `medication` timeline_event, a `task` artifact (ring the surgery), a `family_update` to Tom (`to_circle_member_id` matches the seeded UUID), a `question` re night-time freezing, a `calendar_event` for 14 August, non-empty `patterns` ("third missed evening dose"), and **no** `medication_update` (nothing stated a dose changed — this exercises prompt rule 8 against a model that might wrongly infer one from "forgotten her evening Sinemet").
+4. Verify persistence directly with `execute_sql`: `select kind,status,payload from artifact where capture_id=...`, `select kind,headline,severity from timeline_event where capture_id=...`, `select processed_at, model_raw->>'provider' from capture where id=...`, `select version,content from brief where recipient_id=... order by version desc limit 1`.
+5. **Retry-safety**: call `extract` again with the same `capture_id`; confirm artifact/timeline_event row counts for that `capture_id` are unchanged (not doubled).
+6. **Fallback test**: set `LLM_PROVIDER=anthropic` but an invalid `ANTHROPIC_API_KEY`, rerun, confirm `model_raw->>'provider'='openai'` (automatic fallback fired).
+7. **`transcribe` test**: upload a short known audio clip to the `captures` Storage bucket via the Storage REST API, `curl` `transcribe` with its `storage_path`, confirm a non-empty transcript roughly matching the clip.
+8. Edge cases: `capture_id` with null `raw_text` → 422; nonexistent `capture_id` → 404; missing body → 400.
+9. Check `mcp__claude_ai_Supabase__get_logs` (service `edge-function`) after each test for any silent `console.error` not surfaced in the HTTP response.
