@@ -105,16 +105,31 @@ nonisolated struct TimeOfDay: Codable, Hashable, Sendable, Comparable {
         self.minute = minute
     }
 
+    /// `"08:00"`, `"8:00"` or `"08:00:00"`. Nil for anything else.
+    ///
+    /// Shared with the `scheduled_times` write path, which parses times out of
+    /// a `medication_update` before they ever reach Postgres — a bad time
+    /// should fail the approval, not land in the column the scheduler reads.
+    init?(_ text: String) {
+        let parts = text.trimmingCharacters(in: .whitespaces)
+            .split(separator: ":")
+            .compactMap { Int($0) }
+        guard parts.count >= 2,
+              (0 ... 23).contains(parts[0]),
+              (0 ... 59).contains(parts[1])
+        else { return nil }
+        (hour, minute) = (parts[0], parts[1])
+    }
+
     init(from decoder: Decoder) throws {
         let text = try decoder.singleValueContainer().decode(String.self)
-        let parts = text.split(separator: ":").compactMap { Int($0) }
-        guard parts.count >= 2 else {
+        guard let parsed = TimeOfDay(text) else {
             throw DecodingError.dataCorrupted(
                 .init(codingPath: decoder.codingPath,
                       debugDescription: "Not a HH:mm[:ss] time: \(text)")
             )
         }
-        (hour, minute) = (parts[0], parts[1])
+        self = parsed
     }
 
     func encode(to encoder: Encoder) throws {

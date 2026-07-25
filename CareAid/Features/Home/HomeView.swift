@@ -20,7 +20,7 @@ struct HomeView: View {
                     appState.path.append(.voiceCapture)
                 }
 
-                captureAlternatives
+                typeButton
 
                 Spacer(minLength: Theme.Space.l)
 
@@ -34,30 +34,19 @@ struct HomeView: View {
 
     // MARK: - Pieces
 
-    /// Side by side normally; stacked once the labels stop fitting, rather than
-    /// truncating them.
-    private var captureAlternatives: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Space.m) {
-                typeButton
-                photoButton
-            }
-            VStack(spacing: Theme.Space.m) {
-                typeButton
-                photoButton
-            }
-        }
-    }
-
     private var typeButton: some View {
         SecondaryButton("Type it", systemImage: "keyboard") {
             appState.path.append(.textCapture)
         }
     }
 
-    private var photoButton: some View {
-        SecondaryButton("Photo", systemImage: "camera") {}
-    }
+    // Photo capture is deferred, and its button went with it — a visible
+    // control that does nothing is worse than one that isn't there, least of
+    // all on stage. When it comes back the scope is: photograph a medicine box,
+    // a receipt or a letter from the consultant, upload to the `captures`
+    // Storage bucket, write `capture.media_url`, and let `extract` read the
+    // image alongside the text. `NSCameraUsageDescription` and the `photo`
+    // value of `capture.source` are already in place for it.
 
     /// Today's timeline, three items maximum. Empty until C4 wires up the DB.
     private var todayStrip: some View {

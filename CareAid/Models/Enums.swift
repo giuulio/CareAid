@@ -46,9 +46,16 @@ nonisolated enum Severity: Int, Codable, Sendable, CaseIterable {
 }
 
 /// Which column on `medication` an approved `medication_update` writes.
+///
+/// `schedule` and `scheduledTimes` are two views of the same fact — the words
+/// Sarah reads and the times the C12 scheduler does arithmetic on. A reported
+/// change has to move both or the brief and the schedule drift apart silently,
+/// which is exactly what CLAUDE.md §6 warns about, so the extraction prompt
+/// emits one update for each.
 nonisolated enum MedicationField: String, Codable, Sendable, CaseIterable {
     case dose
     case schedule
+    case scheduledTimes = "scheduled_times"
     case active
     case quantityRemaining = "quantity_remaining"
 }

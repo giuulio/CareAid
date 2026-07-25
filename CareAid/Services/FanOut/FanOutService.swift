@@ -11,9 +11,15 @@ struct FanOutService {
     /// Performs the action. Throws if the thing genuinely didn't happen, so the
     /// card can stay undecided rather than claiming success.
     func perform(_ artifact: Artifact) async throws {
+        // Only a proposal can be acted on. The one caller today sources its
+        // artifacts from `ArtifactRepository.proposed()` so this never fires,
+        // but a stale `Artifact` value handed back here later would otherwise
+        // re-open WhatsApp or rewrite the diary without anyone asking.
+        guard artifact.status == .proposed else { return }
+
         switch artifact.payload {
         case .calendarEvent(let payload):
-            try await CalendarService().add(payload)
+            try await CalendarService().add(payload, artifactID: artifact.id)
 
         case .familyUpdate(let payload):
             let handle = try await handle(for: payload)

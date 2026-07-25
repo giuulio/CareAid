@@ -114,9 +114,17 @@ export const EXTRACTION_SCHEMA = {
       {
         medication_id: { type: "string" },
         medication_name: { type: "string" },
-        field: { type: "string", enum: ["dose", "schedule", "active", "quantity_remaining"] },
+        field: {
+          type: "string",
+          enum: ["dose", "schedule", "scheduled_times", "active", "quantity_remaining"],
+        },
         from: nullableString,
-        to: { type: "string" },
+        to: {
+          type: "string",
+          description:
+            "For scheduled_times, a comma-separated ascending HH:MM list. " +
+            "For active, true or false. For quantity_remaining, a whole number.",
+        },
         why: { type: "string", description: "Attribution, never rationale" },
       },
       ["medication_id", "medication_name", "field", "from", "to", "why"],

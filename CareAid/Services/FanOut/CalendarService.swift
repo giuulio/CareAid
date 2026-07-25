@@ -29,16 +29,18 @@ struct CalendarService {
         }
     }
 
+    /// Writes the event, or rewrites the one this artifact wrote last time.
+    ///
+    /// Keyed on `artifact.id`, the same way `ReminderService` keys its
+    /// notification request. Approving can fail *after* the diary write — a
+    /// dropped connection on the status PATCH leaves a "Try again" button that
+    /// re-runs this method — and without a key that second tap would put a
+    /// second consultant's appointment in her real calendar.
     @discardableResult
-    func add(_ payload: CalendarEventPayload) async throws -> String {
+    func add(_ payload: CalendarEventPayload, artifactID: UUID) async throws -> String {
         try await requestAccess()
 
-        guard let calendar = store.defaultCalendarForNewEvents else {
-            throw CalendarError.noDefaultCalendar
-        }
-
-        let event = EKEvent(eventStore: store)
-        event.calendar = calendar
+        let event = try existingEvent(for: artifactID) ?? newEvent()
         event.title = payload.title
         event.startDate = payload.startsAt
         // An appointment with no stated end still needs one; an hour is a
@@ -47,12 +49,50 @@ struct CalendarService {
         event.location = payload.location
         event.notes = payload.notes
 
+        // Cleared first: on a rewrite these would otherwise stack up alongside
+        // the ones already on the event.
+        event.alarms = nil
         for minutes in payload.remindersMin {
             event.addAlarm(EKAlarm(relativeOffset: -Double(minutes) * 60))
         }
 
-        try store.save(event, span: .thisEvent)
+        try store.save(event, span: .thisEvent, commit: true)
+        Self.remember(event.eventIdentifier, for: artifactID)
         return event.eventIdentifier
+    }
+
+    private func newEvent() throws -> EKEvent {
+        guard let calendar = store.defaultCalendarForNewEvents else {
+            throw CalendarError.noDefaultCalendar
+        }
+        let event = EKEvent(eventStore: store)
+        event.calendar = calendar
+        return event
+    }
+
+    /// Nil if we've never written this artifact, or if she has since deleted
+    /// the event by hand — in which case writing a fresh one is right.
+    private func existingEvent(for artifactID: UUID) -> EKEvent? {
+        guard let identifier = Self.rememberedIdentifier(for: artifactID) else { return nil }
+        return store.event(withIdentifier: identifier)
+    }
+
+    // MARK: - Artifact → event identity
+
+    // UserDefaults rather than a column: the mapping is local to this phone,
+    // and `artifact` has nowhere in §6 to put an EventKit identifier.
+
+    private static func defaultsKey(_ artifactID: UUID) -> String {
+        "careaid.calendar.event.\(artifactID.uuidString)"
+    }
+
+    private static func rememberedIdentifier(for artifactID: UUID) -> String? {
+        UserDefaults.standard.string(forKey: defaultsKey(artifactID))
+    }
+
+    private static func remember(_ identifier: String?, for artifactID: UUID) {
+        guard let identifier else { return }
+        UserDefaults.standard.set(identifier, forKey: defaultsKey(artifactID))
     }
 
     /// C12 reads these to find the gaps where she can actually hand over pills.
