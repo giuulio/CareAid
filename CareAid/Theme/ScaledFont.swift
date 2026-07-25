@@ -15,13 +15,15 @@ extension View {
 private struct ScaledFont: ViewModifier {
     @ScaledMetric private var size: CGFloat
     private let weight: Font.Weight
+    private let design: Font.Design
 
     init(_ token: Theme.TypeToken) {
         _size = ScaledMetric(wrappedValue: token.size, relativeTo: token.relativeTo)
         weight = token.weight
+        design = token.design
     }
 
     func body(content: Content) -> some View {
-        content.font(.system(size: size, weight: weight))
+        content.font(.system(size: size, weight: weight, design: design))
     }
 }

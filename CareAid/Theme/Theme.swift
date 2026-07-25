@@ -79,12 +79,20 @@ enum Theme {
         let size: CGFloat
         let weight: Font.Weight
         let relativeTo: Font.TextStyle
+        /// Serif is reserved for the brief and the appointment pack, so they
+        /// read as a document you hand to a consultant rather than as app
+        /// chrome (C10).
+        var design: Font.Design = .default
     }
 
     /// Sizes sit above the 17pt system default throughout — CLAUDE.md §8.
     enum TypeScale {
         /// The brief's one-liner. The largest thing in the app.
-        static let briefOneLiner = TypeToken(size: 30, weight: .semibold, relativeTo: .largeTitle)
+        static let briefOneLiner = TypeToken(size: 30, weight: .semibold, relativeTo: .largeTitle, design: .serif)
+        /// Body copy inside the brief and the printed pack.
+        static let document = TypeToken(size: 20, weight: .regular, relativeTo: .body, design: .serif)
+        /// Section headings in the printed pack.
+        static let documentHeading = TypeToken(size: 22, weight: .semibold, relativeTo: .title3, design: .serif)
         /// Screen titles.
         static let screenTitle = TypeToken(size: 28, weight: .bold, relativeTo: .title)
         /// Card headlines.
