@@ -114,7 +114,7 @@ interface LLMProvider {
 }
 ```
 
-`primaryProvider(env)` / `fallbackProvider(env)` pick based on `LLM_PROVIDER` (default `anthropic`). Plain `fetch()` calls — no SDK dependency, keeps the Deno bundle small:
+`primaryProvider(env)` / `fallbackProvider(env)` pick based on `LLM_PROVIDER` (default `anthropic`; **as built, defaults to `openai` instead — see STATUS banner above, no fallback provider implemented**). Plain `fetch()` calls — no SDK dependency, keeps the Deno bundle small:
 - Anthropic: `POST /v1/messages` with `anthropic-version` header.
 - OpenAI: `POST /v1/chat/completions` with `response_format: {type: "json_object"}` for a real JSON-mode guarantee.
 
@@ -125,6 +125,8 @@ Call orchestration (at most 3 LLM calls total — no over-engineered retry loop)
 4. If all three attempts fail → throw (surfaced as a 500).
 
 Validation (`schema.ts`) is a hand-rolled ~40-line checker (no schema library needed): checks `kind` values against the DB CHECK-constraint sets, `severity` range, `headline` length ≤60, required fields per artifact payload kind. Cross-reference `medication_update.medication_id` and `family_update.to_circle_member_id` against ids actually present in the assembled context — if a referenced id doesn't exist, drop that one artifact (don't fail the whole batch) since the model may hallucinate a UUID.
+
+**As built:** `schema.ts` holds the JSON-Schema passed to the provider for structured-output enforcement (shape is guaranteed, not hand-checked) rather than the post-hoc checker described above; the hallucinated-ID guard was adopted as planned and lives in `persist.ts`.
 
 ### Storage bucket (prerequisite for `transcribe`)
 
@@ -147,12 +149,12 @@ Request: `{ storage_path: string, bucket?: string }` (default bucket `"captures"
 ### Secrets
 
 Set via `mcp__claude_ai_Supabase__deploy_edge_function` or the Supabase dashboard (never in git, never in the app bundle):
-- `LLM_PROVIDER` (`anthropic` | `openai`, default `anthropic`)
+- `LLM_PROVIDER` (`anthropic` | `openai`, default `anthropic`; **as built, default is `openai`** — only OpenAI is funded, per STATUS banner)
 - `ANTHROPIC_API_KEY`
 - `OPENAI_API_KEY`
 - `ELEVENLABS_API_KEY`
 
-`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by the platform into every Edge Function — do not set manually. Add an `.env.example` at repo root documenting the four custom keys (placeholders only) for whoever fills in real secrets.
+`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by the platform into every Edge Function — do not set manually. Add an `.env.example` at repo root documenting the four custom keys (placeholders only) for whoever fills in real secrets. **Not yet created** as of this status pass.
 
 ### Not blocking, optional cleanup
 
@@ -160,16 +162,18 @@ Supabase's performance advisor flags a handful of `INFO`-level items unrelated t
 
 ## Critical files
 
-- `supabase/functions/extract/index.ts` (new)
-- `supabase/functions/_shared/extraction/{context,prompt,schema,persist}.ts` (new)
-- `supabase/functions/_shared/llm/{provider,anthropic,openai}.ts` (new)
-- `supabase/functions/transcribe/index.ts` (new)
-- Storage: `captures` bucket (new — create via `execute_sql`/dashboard before deploying `transcribe`; no local file, lives only in the live project)
+- ✅ `supabase/functions/extract/index.ts` — built (flat layout: `context.ts`, `prompt.ts`, `schema.ts`, `providers.ts`, `persist.ts`, `index.ts`, not the `_shared/` split below)
+- ❌ `supabase/functions/_shared/extraction/{context,prompt,schema,persist}.ts` — not built; equivalents exist flat inside `extract/` instead (no `_shared/` directory at all)
+- ❌ `supabase/functions/_shared/llm/{provider,anthropic,openai}.ts` — not built; a single `extract/providers.ts` covers this instead
+- ❌ `supabase/functions/transcribe/index.ts` — not started, still `.gitkeep`
+- ❓ Storage: `captures` bucket — not confirmed on the live project; genuine blocker for `transcribe`
 - `CareAid/CareAid/Models/ExtractionResponse.swift`, `Artifact.swift`, `Brief.swift`, `Coding.swift` — fixed contract references, do not change
 - `supabase/migrations/001_schema.sql` — CHECK constraints source of truth
 - `supabase/migrations/002_seed.sql` — test data (recipient `11111111-…`, Tom = circle member `33333333-3333-4333-8333-000000000001`)
 
 ## Verification
+
+Steps 2–6 and 8–9 have been run for `extract` against the live demo capture (see STATUS banner) — all passed. Steps 1 and 7 (bucket creation, `transcribe` test) remain outstanding since `transcribe` isn't built.
 
 1. Create the `captures` Storage bucket (see "Storage bucket" above) and confirm with `select id, public from storage.buckets;` before deploying `transcribe` — it will fail every request otherwise. Deploy both functions via `mcp__claude_ai_Supabase__deploy_edge_function` to project `prpuxfpkxdsuxjihkkdt`; set the four secrets above.
 2. Insert a fresh test capture via `execute_sql` using CLAUDE.md §9's demo script verbatim as `raw_text` (recipient `11111111-1111-4111-8111-111111111111`, author `22222222-2222-4222-8222-222222222222`, source `text`) — this is the one case where CLAUDE.md fully specifies the expected output, making it the ideal end-to-end test.
