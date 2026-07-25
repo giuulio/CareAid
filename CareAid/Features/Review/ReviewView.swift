@@ -1,80 +1,114 @@
 import SwiftUI
 
+/// The demo's centrepiece. One messy paragraph became this.
+///
+/// Order matters: what she said, then any pattern that reframes it, then what
+/// was already recorded, then what needs a decision.
 struct ReviewView: View {
-
-    @State private var viewModel: ReviewViewModel
-
-    /// What she actually said. Every card on this screen traces back to it
-    /// (CLAUDE.md §2, rule 6).
-    private let transcript: String
+    @Environment(\.dismiss) private var dismiss
+    @State private var model: ReviewViewModel
+    @State private var appeared = false
 
     init(response: ExtractionResponse, transcript: String = "") {
-        _viewModel = State(
-            initialValue: ReviewViewModel(
-                response: response
-            )
-        )
-        self.transcript = transcript
+        _model = State(initialValue: ReviewViewModel(response: response, transcript: transcript))
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
+        ZStack {
+            Theme.Palette.surface.ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    transcriptCard
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("What I heard")
-                        .font(.title2)
-                        .bold()
+                    if !model.patterns.isEmpty {
+                        PatternBanner(patterns: model.patterns).staggered(0, appeared)
+                    }
 
-                    Text(transcript.isEmpty ? "Your recording will appear here." : "“\(transcript)”")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
+                    ForEach(Array(model.flags.enumerated()), id: \.offset) { index, flag in
+                        FlagNotice(flag: flag, transcript: model.transcript)
+                            .staggered(index + 1, appeared)
+                    }
+
+                    ForEach(Array(model.events.enumerated()), id: \.element.id) { index, event in
+                        RecordedEntry(event: event)
+                            .staggered(index + model.flags.count + 1, appeared)
+                    }
+
+                    ForEach(Array(model.artifacts.enumerated()), id: \.element.id) { index, artifact in
+                        ReviewCard(
+                            artifact: artifact,
+                            decision: model.decision(for: artifact),
+                            approveAction: { Task { await model.approve(artifact) } },
+                            dismissAction: { Task { await model.dismiss(artifact) } }
+                        )
+                        .staggered(index + model.events.count + model.flags.count + 1, appeared)
+                    }
+
+                    footer
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Theme.Space.l)
+                .padding(.vertical, Theme.Space.xl)
+            }
+        }
+        .task {
+            // The one animation in the app, used once (CLAUDE.md §8).
+            withAnimation(.easeOut(duration: 0.2)) { appeared = true }
+        }
+    }
 
+    // MARK: - Pieces
 
-                if !viewModel.response.events.isEmpty {
-                    VStack(spacing: 12) {
-                        ForEach(viewModel.response.events) { event in
-                            // TimelinePreview doesn't exist; TimelineEventRow
-                            // from C4 renders the same thing.
-                            TimelineEventRow(event: event)
-                        }
-                    }
-                }
+    private var transcriptCard: some View {
+        Card {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("What I heard")
+                    .themeFont(Theme.TypeScale.cardHeadline)
+                    .foregroundStyle(Theme.Palette.ink)
 
-
-                if !viewModel.visibleArtifacts.isEmpty {
-                    VStack(spacing: 16) {
-                        ForEach(viewModel.visibleArtifacts) { artifact in
-                            ReviewCard(
-                                artifact: artifact,
-                                approveAction: {
-                                    viewModel.approve(artifact)
-                                },
-                                dismissAction: {
-                                    viewModel.dismiss(artifact)
-                                }
-                            )
-                        }
-                    }
-
-
-                    Button {
-                        viewModel.approveAll()
-                    } label: {
-                        Text("Approve all")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-
+                if model.transcript.isEmpty {
+                    Text("No transcript for this one.")
+                        .themeFont(Theme.TypeScale.body)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
                 } else {
-                    Text("Nothing needs reviewing.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
+                    Text("“\(model.transcript)”")
+                        .themeFont(Theme.TypeScale.body)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
+                        .lineLimit(model.transcriptExpanded ? nil : 3)
+
+                    // Rule 6: every output on this screen traces back to here.
+                    SecondaryButton(
+                        model.transcriptExpanded ? "Hide what I said" : "See what I said",
+                        systemImage: model.transcriptExpanded ? "chevron.up" : "chevron.down"
+                    ) {
+                        model.transcriptExpanded.toggle()
+                    }
                 }
             }
-            .padding()
         }
+    }
+
+    @ViewBuilder
+    private var footer: some View {
+        VStack(spacing: Theme.Space.m) {
+            if model.hasUndecided && model.artifacts.count > 1 {
+                PrimaryButton("Approve all", systemImage: "checkmark.circle") {
+                    Task { await model.approveAll() }
+                }
+            }
+            SecondaryButton(model.hasUndecided ? "Leave the rest" : "Done") { dismiss() }
+        }
+        .padding(.top, Theme.Space.s)
+    }
+}
+
+private extension View {
+    /// 200ms, offset a little per card so the stack lands rather than snaps.
+    func staggered(_ index: Int, _ appeared: Bool) -> some View {
+        opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : Theme.Space.xl)
+            .animation(
+                .easeOut(duration: 0.2).delay(Double(index) * 0.04),
+                value: appeared
+            )
     }
 }

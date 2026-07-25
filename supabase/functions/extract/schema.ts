@@ -167,7 +167,14 @@ export const EXTRACTION_SCHEMA = {
         required: ["type", "text", "ask"],
         properties: {
           type: { type: "string" },
-          text: nullableString,
+          text: {
+            type: ["string", "null"],
+            description:
+              "Her exact words that were unclear, copied verbatim from the capture, " +
+              "e.g. \"the 14th\". Never your own explanation or reasoning — the app " +
+              "quotes this back to her as something she said. Null if no specific " +
+              "phrase is the problem.",
+          },
           ask: { type: "string" },
         },
       },
