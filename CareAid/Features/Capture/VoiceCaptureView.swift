@@ -11,8 +11,10 @@ struct VoiceCaptureView: View {
             switch voice.phase {
             case .listening:
                 listening
+            case .writingDown(let partial):
+                working("Writing it down…", transcript: partial)
             case .thinking(let transcript):
-                thinking(transcript)
+                working("Reading it back…", transcript: transcript)
             case .failed(let message):
                 failed(message)
             }
@@ -49,16 +51,21 @@ struct VoiceCaptureView: View {
         }
     }
 
-    private func thinking(_ transcript: String) -> some View {
+    /// Never a bare spinner (§8). If the live recogniser caught nothing — a
+    /// simulator, or a phone that declined speech recognition — say what is
+    /// happening rather than showing an empty quote.
+    private func working(_ label: String, transcript: String) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             Card {
-                Text("“\(transcript)”")
+                Text(transcript.isEmpty ? "I heard you. Getting the words down." : "“\(transcript)”")
                     .themeFont(Theme.TypeScale.body)
-                    .foregroundStyle(Theme.Palette.ink)
+                    .foregroundStyle(
+                        transcript.isEmpty ? Theme.Palette.inkSecondary : Theme.Palette.ink
+                    )
             }
             HStack(spacing: Theme.Space.m) {
                 ProgressView()
-                Text("Reading it back…")
+                Text(label)
                     .themeFont(Theme.TypeScale.bodyStrong)
                     .foregroundStyle(Theme.Palette.inkSecondary)
             }

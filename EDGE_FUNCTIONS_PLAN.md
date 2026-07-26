@@ -36,9 +36,32 @@
 > - **Hallucinated-ID guard adopted from this plan** — good catch, now
 >   implemented in `persist.ts`.
 >
-> **Still open from this plan and worth doing:** the `captures` Storage bucket
-> (a genuine blocker — `transcribe` cannot work without it), `transcribe`
-> itself, and the `capture.media_url` write path for photo capture.
+> **Still open from this plan:** the `captures` Storage bucket and the
+> `capture.media_url` write path for photo capture.
+>
+> ## STATUS: `transcribe` is built, deployed and verified too
+>
+> Built without the Storage bucket, which this plan treated as a blocker. It
+> isn't one: the app **posts the audio as the raw request body** and the
+> function forwards it to the transcriber. The signed-URL flow needed a bucket,
+> an upload, a URL and a fetch before the first byte reached a transcriber —
+> four things to fail in the one part of the demo where Sarah has just stopped
+> talking and is waiting. One hop instead. The bucket is still worth creating
+> for photo capture, which genuinely needs a durable URL.
+>
+> Two other deviations, both deliberate:
+>
+> - **OpenAI, not ElevenLabs, by default.** `STT_PROVIDER` picks between them
+>   the way `LLM_PROVIDER` does, and Scribe is implemented — but the ElevenLabs
+>   credits aren't redeemed and the OpenAI key already is. One env var when they
+>   land.
+> - **The function reads her record for a vocabulary hint.** Medication names,
+>   circle members and appointment headlines, straight from Postgres. Without it
+>   "co-careldopa" comes back as three unrelated words and "Okafor" as "okay
+>   for". Nothing invented: if it isn't in the database it isn't in the hint.
+>
+> Verified end to end on 2026-07-26: spoken audio → transcript with "Sinemet",
+> "25/125" and "Dr Okafor" correct → `extract` → the three demo cards.
 
 ---
 

@@ -23,7 +23,7 @@ Built as a hackathon project. See [`CLAUDE.md`](CLAUDE.md) for the full product 
 | App | Swift 6 / SwiftUI, iOS 26 minimum, iPhone only, portrait locked |
 | Backend | Supabase — Postgres, Storage, Edge Functions (Deno/TypeScript) |
 | LLM | Anthropic Claude primary, OpenAI fallback, behind one interface (`LLM_PROVIDER`) |
-| Speech-to-text | ElevenLabs Scribe via Edge Function, with on-device `SFSpeechRecognizer` fallback |
+| Speech-to-text | `transcribe` Edge Function — OpenAI or ElevenLabs Scribe behind `STT_PROVIDER` — with Apple `SFSpeechRecognizer` live on screen and as the fallback |
 | Med rules | DailyMed SPL data, extracted offline into a static JSON file shipped in the bundle |
 | Calendar | EventKit |
 | Messaging | `wa.me` deep link, with `MFMessageComposeViewController` fallback |

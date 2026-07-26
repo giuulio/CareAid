@@ -11,6 +11,9 @@ final class VoiceCaptureViewModel {
 
     enum Phase {
         case listening
+        /// Between "That's it" and having the words. Shows whatever the live
+        /// recogniser managed, so the screen is never blank (§8).
+        case writingDown(partial: String)
         case thinking(transcript: String)
         case failed(String)
     }
@@ -25,9 +28,18 @@ final class VoiceCaptureViewModel {
     var transcript: String { speech.transcript }
 
     func start() async {
+        // The recorder is what must start; the live recogniser is a nicety on
+        // top of it. If speech recognition is unavailable — which is the normal
+        // state of a simulator — we still record, and `transcribe` reads the
+        // file when she's done.
         do {
             try await speech.begin()
             recorder.onBuffer = { @Sendable [speech] buffer in speech.append(buffer) }
+        } catch {
+            print("[CareAid] live transcript unavailable, recording anyway: \(error.localizedDescription)")
+        }
+
+        do {
             try await recorder.start()
             phase = .listening
         } catch {
@@ -39,8 +51,10 @@ final class VoiceCaptureViewModel {
 
     func finish() async {
         recorder.stop()
-        let words = await speech.finish()
+        let live = await speech.finish()
+        phase = .writingDown(partial: live)
 
+        let words = await bestTranscript(live: live)
         guard !words.isEmpty else {
             phase = .failed("I didn't catch anything. Try again, or type it instead.")
             return
@@ -62,6 +76,26 @@ final class VoiceCaptureViewModel {
             // way, so nothing she said is lost.
             phase = .failed(error.localizedDescription)
         }
+    }
+
+    /// The server's reading of the recording, or Apple's live one if the round
+    /// trip failed.
+    ///
+    /// Server first because it is the accurate one — it gets her medication
+    /// names from her own record — and because in a simulator Apple's
+    /// recogniser returns nothing at all. Falling back rather than failing is
+    /// the §8 rule: whatever she said, something of it survives.
+    private func bestTranscript(live: String) async -> String {
+        guard let url = recorder.fileURL else { return live }
+        do {
+            let server = try await speech.transcribe(fileAt: url)
+            if !server.isEmpty { return server }
+            print("[CareAid] transcribe returned nothing; keeping the live transcript.")
+        } catch {
+            print("[CareAid] ⚠️ transcribe failed, falling back to the on-device transcript: "
+                  + error.localizedDescription)
+        }
+        return live
     }
 
     func cancel() {

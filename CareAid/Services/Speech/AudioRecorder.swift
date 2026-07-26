@@ -5,10 +5,9 @@ import Observation
 /// Captures microphone audio, publishes levels for the waveform, and hands
 /// buffers to whoever is transcribing.
 ///
-/// Writes the audio to a file as it goes, even though Apple's recogniser works
-/// from the live buffers and never reads it. Two reasons: "never lose input"
-/// (§8) is stronger if the recording survives a crash, and ElevenLabs needs a
-/// file to upload when that key arrives.
+/// Writes the audio to a file as it goes as well as streaming buffers to
+/// Apple's live recogniser. The file is what gets posted to `transcribe`, and
+/// it is why "never lose input" (§8) survives a crash mid-sentence.
 @Observable
 final class AudioRecorder {
 
@@ -81,9 +80,8 @@ final class AudioRecorder {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
 
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("capture-\(UUID().uuidString).caf")
-        sink.file = try AVAudioFile(forWriting: url, settings: format.settings)
+        let (url, file) = try Self.makeFile(matching: format)
+        sink.file = file
         sink.onLevel = { @Sendable [weak self] level in
             // Only the Float crosses back to the main actor, once per buffer.
             Task { @MainActor in self?.append(level) }
@@ -119,6 +117,40 @@ final class AudioRecorder {
         if let fileURL { try? FileManager.default.removeItem(at: fileURL) }
         fileURL = nil
         levels = []
+    }
+
+    /// AAC in an m4a, falling back to WAV.
+    ///
+    /// Not `.caf`: this file is posted to `transcribe`, and neither OpenAI nor
+    /// ElevenLabs accepts a Core Audio Format container. AAC keeps a 25-second
+    /// note around 100KB, which is one quick request rather than three megabytes
+    /// over conference wifi. If the encoder isn't available — it always is on a
+    /// phone, less reliably in a simulator — WAV is uncompressed, universally
+    /// accepted, and still fine at this length.
+    private static func makeFile(matching format: AVAudioFormat) throws -> (URL, AVAudioFile) {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("capture-\(UUID().uuidString)")
+
+        let aac: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: format.sampleRate,
+            AVNumberOfChannelsKey: format.channelCount,
+        ]
+        let wav: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: format.sampleRate,
+            AVNumberOfChannelsKey: format.channelCount,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+        ]
+
+        let m4aURL = base.appendingPathExtension("m4a")
+        if let file = try? AVAudioFile(forWriting: m4aURL, settings: aac) {
+            return (m4aURL, file)
+        }
+        let wavURL = base.appendingPathExtension("wav")
+        return (wavURL, try AVAudioFile(forWriting: wavURL, settings: wav))
     }
 
     private func append(_ level: Float) {
