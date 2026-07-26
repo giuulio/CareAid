@@ -61,7 +61,11 @@ export const EXTRACTION_SCHEMA = {
           },
           occurred_at: { type: "string", description: "ISO 8601 UTC" },
           headline: { type: "string", description: "60 characters or fewer, plain English" },
-          detail: nullableString,
+          detail: {
+            type: ["string", "null"],
+            description:
+              "Only a fact the headline doesn't already carry. Null if there is nothing to add — never a restatement of the headline in other words.",
+          },
           severity: { type: "integer", enum: [0, 1, 2, 3] },
           tags: { type: "array", items: { type: "string" } },
           confidence: nullableNumber,
