@@ -119,30 +119,27 @@ enum Theme {
         /// about how big `pills` should be. Icon tokens leave this `nil`.
         var face: String?
         let size: CGFloat
-        /// Only consulted when `face` is `nil`; the bundled faces carry their
-        /// weight in the file, because SwiftUI's `.weight()` does not drive
-        /// OpenType variation axes.
-        var weight: Font.Weight = .regular
+        /// Applied to both system fonts and custom faces. Varela Round only
+        /// ships as a regular cut, so heavier roles are synthesized here.
+        var weight: Font.Weight = .semibold
         let relativeTo: Font.TextStyle
     }
 
-    /// The two families, by role.
+    /// The app text face.
     ///
-    /// Nunito Sans is the brand voice — rounded terminals and a tall x-height,
-    /// which is the reason it was picked and also, conveniently, what ageing
-    /// eyes resolve most easily. Inter is the workhorse: a UI face drawn for
-    /// screens, with unambiguous `1/l/I` and `0/O` shapes that matter when the
-    /// text is a dose.
+    /// Varela Round is intentionally used for both brand and reading text, so
+    /// screens feel softer and more consistent. SF Symbols still use the system
+    /// font through `nil` face tokens.
     enum Face {
-        static let brandRegular = "NunitoSans-Regular"
-        static let brandSemibold = "NunitoSans-SemiBold"
-        static let brandBold = "NunitoSans-Bold"
-        static let brandExtraBold = "NunitoSans-ExtraBold"
+        static let brandRegular = "VarelaRound-Regular"
+        static let brandSemibold = "VarelaRound-Regular"
+        static let brandBold = "VarelaRound-Regular"
+        static let brandExtraBold = "VarelaRound-Regular"
 
-        static let textRegular = "Inter-Regular"
-        static let textMedium = "Inter-Medium"
-        static let textSemibold = "Inter-SemiBold"
-        static let textBold = "Inter-Bold"
+        static let textRegular = "VarelaRound-Regular"
+        static let textMedium = "VarelaRound-Regular"
+        static let textSemibold = "VarelaRound-Regular"
+        static let textBold = "VarelaRound-Regular"
     }
 
     /// Sizes sit well above the 17pt system default throughout — CLAUDE.md §8,
@@ -150,33 +147,34 @@ enum Theme {
     /// older readers stop struggling.
     enum TypeScale {
         /// The wordmark on the splash.
-        static let splashTitle = TypeToken(face: Face.brandBold, size: 44, relativeTo: .largeTitle)
+        static let splashTitle = TypeToken(face: Face.brandBold, size: 44, weight: .bold, relativeTo: .largeTitle)
         /// The wordmark in Home's header. Sized against the 48pt icons either
         /// side of it — at the old 22pt it read as a caption between two large
-        /// glyphs rather than as the thing they flank.
-        static let brandTitle = TypeToken(face: Face.brandBold, size: 34, relativeTo: .title)
-        /// The greeting on Home, and nothing else. Deliberately *not* bold: at
-        /// this size the scale is already the emphasis, and weight on top of it
-        /// turns a question into a banner. 30pt rather than 40 because the
-        /// question got longer — "How are we helping Mum today?" sets to two
-        /// comfortable lines here, and to four cramped ones at 40.
+        /// glyphs rather than as the thing they flank. Heavy weight gives
+        /// Varela Round enough presence beside SF Symbols.
+        static let brandTitle = TypeToken(face: Face.brandExtraBold, size: 34, weight: .heavy, relativeTo: .title)
+        /// The greeting on Home, and nothing else. It is lighter than the brand
+        /// mark: at this size the scale is already the emphasis, and too much
+        /// weight turns a question into a banner. 30pt rather than 40 because
+        /// the question got longer — "How are we helping Mum today?" sets to
+        /// two comfortable lines here, and to four cramped ones at 40.
         static let hero = TypeToken(face: Face.brandRegular, size: 30, relativeTo: .largeTitle)
         /// The brief's one-liner.
-        static let briefOneLiner = TypeToken(face: Face.brandBold, size: 32, relativeTo: .largeTitle)
+        static let briefOneLiner = TypeToken(face: Face.brandBold, size: 32, weight: .bold, relativeTo: .largeTitle)
         /// Screen titles.
-        static let screenTitle = TypeToken(face: Face.brandBold, size: 30, relativeTo: .title)
+        static let screenTitle = TypeToken(face: Face.brandBold, size: 30, weight: .bold, relativeTo: .title)
         /// Card headlines.
-        static let cardHeadline = TypeToken(face: Face.brandBold, size: 24, relativeTo: .title3)
+        static let cardHeadline = TypeToken(face: Face.brandBold, size: 24, weight: .bold, relativeTo: .title3)
         /// Section headings in the printed pack.
         static let documentHeading = TypeToken(face: Face.brandSemibold, size: 23, relativeTo: .title3)
         /// Body copy inside the brief and the printed pack.
         static let document = TypeToken(face: Face.textRegular, size: 21, relativeTo: .body)
         /// Button labels.
-        static let button = TypeToken(face: Face.textSemibold, size: 22, relativeTo: .title3)
+        static let button = TypeToken(face: Face.textSemibold, size: 22, weight: .bold, relativeTo: .title3)
         /// Body copy. The floor for anything the caregiver has to read properly.
         static let body = TypeToken(face: Face.textRegular, size: 21, relativeTo: .body)
         /// Body copy that needs emphasis.
-        static let bodyStrong = TypeToken(face: Face.textSemibold, size: 21, relativeTo: .body)
+        static let bodyStrong = TypeToken(face: Face.textSemibold, size: 21, weight: .bold, relativeTo: .body)
         /// Metadata only — timestamps, captions. Never body copy.
         static let meta = TypeToken(face: Face.textMedium, size: 18, relativeTo: .subheadline)
 
@@ -211,6 +209,10 @@ enum Theme {
         static let micDiameter: CGFloat = 200
         /// The mic glyph inside it. Fixed — the circle does not grow with type.
         static let micGlyph: CGFloat = 68
+        /// The keyboard fallback on Home. Wide enough to read as a bar, with no visible label.
+        static let keyboardButtonHeight: CGFloat = 88
+        /// The keyboard glyph inside its fallback button.
+        static let keyboardGlyph: CGFloat = 64
         /// How far the mic's halo breathes out at rest.
         static let micHalo: CGFloat = 28
         /// Enough room to type a rambling paragraph without scrolling.

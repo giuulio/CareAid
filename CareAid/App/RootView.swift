@@ -8,22 +8,21 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            NavigationStack(path: $appState.path) {
-                HomeView()
-                    .navigationDestination(for: Route.self, destination: destination)
-            }
-
             if showingSplash {
-                SplashView()
-                    // Fades rather than cuts. Nothing on the splash moves, and
-                    // nothing on Home moves to meet it — only the opacity does,
-                    // so no text slides at the one moment she is orienting.
-                    .transition(.opacity)
+                SplashView {
+                    withAnimation(Theme.Motion.splashOut) { showingSplash = false }
+                }
+                // Fades rather than cuts. Nothing on the splash moves, and
+                // nothing on Home moves to meet it — only the opacity does,
+                // so no text slides at the one moment she is orienting.
+                .transition(.opacity)
+            } else {
+                NavigationStack(path: $appState.path) {
+                    HomeView()
+                        .navigationDestination(for: Route.self, destination: destination)
+                }
+                .transition(.opacity)
             }
-        }
-        .task {
-            try? await Task.sleep(for: .milliseconds(500))
-            withAnimation(Theme.Motion.splashOut) { showingSplash = false }
         }
         .environment(appState)
         .tint(Theme.Palette.accent)

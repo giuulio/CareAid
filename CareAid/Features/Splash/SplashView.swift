@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Half a second of who this is for, before the mic takes over.
+/// One second of who this is for, including the fade before the mic takes over.
 ///
 /// The line matters more than the mark. Every other app in this space opens by
 /// naming the patient; this one opens by naming *her*, and that is the whole
@@ -8,9 +8,16 @@ import SwiftUI
 /// argument gets made — Home is a question and a button, and rightly has no
 /// room for a mission statement.
 ///
-/// Nothing animates. It is on screen for 500ms; something that moved would
-/// still be moving when it left.
+/// Nothing on the splash moves. It holds briefly, then fades; something that
+/// moved would still be moving when it left.
 struct SplashView: View {
+    let onFinished: () -> Void
+    @State private var didStartDismissalTimer = false
+
+    init(onFinished: @escaping () -> Void = {}) {
+        self.onFinished = onFinished
+    }
+
     var body: some View {
         ZStack {
             Theme.Palette.surface.ignoresSafeArea()
@@ -35,6 +42,13 @@ struct SplashView: View {
         // screen goes — better than three fragments that get cut off.
         .accessibilityElement(children: .combine)
         .accessibilityLabel("CareAid. Supporting you, the caregiver.")
+        .task {
+            guard !didStartDismissalTimer else { return }
+            didStartDismissalTimer = true
+            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(1000))
+            onFinished()
+        }
     }
 }
 

@@ -29,12 +29,8 @@ private struct ScaledFont: ViewModifier {
     }
 
     private var font: Font {
-        // A bundled face carries its weight in the file — the static instances
-        // exist precisely because SwiftUI's `.weight()` cannot drive a variable
-        // font's `wght` axis. Asking for a weight here would silently do
-        // nothing, or worse, synthesise a fake bold.
         if let face {
-            .custom(face, size: size)
+            .custom(face, size: size).weight(weight)
         } else {
             .system(size: size, weight: weight)
         }

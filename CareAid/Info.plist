@@ -10,11 +10,8 @@
   and a phone without WhatsApp installed would silently fall through to Safari
   instead of Messages.
 
-  UIAppFonts registers the bundled type. These are static instances cut from
-  the Nunito Sans and Inter variable fonts, one file per weight, because
-  SwiftUI's .weight() modifier does not drive OpenType variation axes — a
-  registered variable font only ever renders its default instance. The names
-  Theme.Face refers to are the PostScript names inside these files.
+  UIAppFonts registers the bundled type. The names Theme.Face refers to are the
+  PostScript names inside these files.
 -->
 <plist version="1.0">
 <dict>
@@ -29,6 +26,7 @@
 		<string>NunitoSans-SemiBold.ttf</string>
 		<string>NunitoSans-Bold.ttf</string>
 		<string>NunitoSans-ExtraBold.ttf</string>
+		<string>VarelaRound-Regular.ttf</string>
 		<string>Inter-Regular.ttf</string>
 		<string>Inter-Medium.ttf</string>
 		<string>Inter-SemiBold.ttf</string>

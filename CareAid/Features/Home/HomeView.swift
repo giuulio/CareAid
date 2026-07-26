@@ -60,16 +60,39 @@ struct HomeView: View {
             Spacer(minLength: Theme.Space.s)
             Text("CareAid")
                 .themeFont(Theme.TypeScale.brandTitle)
-                .foregroundStyle(Theme.Palette.ink)
+                .foregroundStyle(Theme.Palette.accent)
             Spacer(minLength: Theme.Space.s)
             headerLink(to: .medications, icon: "pills", label: "Her medication")
         }
     }
 
     private var typeButton: some View {
-        SecondaryButton("Type it", systemImage: "keyboard") {
+        Button {
             appState.path.append(.textCapture)
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous)
+                    .fill(Theme.Palette.surfaceRaised.opacity(0.55))
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: Theme.Size.keyboardButtonHeight + Theme.Space.l)
+
+                Image(systemName: "keyboard")
+                    .font(.system(size: Theme.Size.keyboardGlyph, weight: .medium))
+                    .foregroundStyle(Theme.Palette.accent)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: Theme.Size.keyboardButtonHeight)
+                    .background(Theme.Palette.surfaceRaised)
+                    .clipShape(.rect(cornerRadius: Theme.Radius.large, style: .continuous))
+                    .litEdge(radius: Theme.Radius.large)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous)
+                            .strokeBorder(Theme.Palette.hairline, lineWidth: Theme.Size.hairline)
+                    }
+            }
         }
+        .buttonStyle(TactileButtonStyle(radius: Theme.Radius.large))
+        .accessibilityLabel("Type a note")
+        .accessibilityHint("Write what happened instead of recording it.")
     }
 
     // Photo capture is deferred, and its button went with it — a visible
