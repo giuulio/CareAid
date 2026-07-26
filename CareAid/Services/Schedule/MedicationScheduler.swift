@@ -69,7 +69,7 @@ nonisolated struct MedicationScheduler {
         let doses = place(medications, unavailable: unavailable, helperWindows: helperWindows)
         return ProposedSchedule(
             day: day,
-            slots: cluster(doses, unavailable: unavailable, helperWindows: helperWindows),
+            slots: cluster(doses),
             conflicts: separationConflicts(among: doses) + coverageConflicts(among: doses),
             unavailable: caregiverBlocks.sorted { $0.start < $1.start },
             helperWindows: helperBlocks.sorted { $0.start < $1.start }
@@ -171,9 +171,7 @@ nonisolated struct MedicationScheduler {
 
     /// One trip with four tablets beats four trips with one. Doses within
     /// `Tolerance.clustering` of each other become a single handover.
-    private func cluster(
-        _ doses: [PlannedDose], unavailable: [MinuteRange], helperWindows: [MinuteRange]
-    ) -> [ScheduleSlot] {
+    private func cluster(_ doses: [PlannedDose]) -> [ScheduleSlot] {
         var slots: [ScheduleSlot] = []
         for dose in doses.sorted(by: { $0.proposed < $1.proposed }) {
             if let index = slots.firstIndex(where: {
@@ -183,11 +181,6 @@ nonisolated struct MedicationScheduler {
             } else {
                 slots.append(ScheduleSlot(minute: dose.proposed, doses: [dose]))
             }
-        }
-        for index in slots.indices {
-            slots[index].coverage = coverage(
-                at: slots[index].minute, unavailable: unavailable, helperWindows: helperWindows
-            )
         }
         return slots
     }

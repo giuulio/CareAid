@@ -27,7 +27,6 @@ nonisolated struct ProposedSchedule: Hashable, Sendable {
 nonisolated struct ScheduleSlot: Hashable, Sendable, Identifiable {
     var minute: Int
     var doses: [PlannedDose]
-    var coverage: Coverage = .caregiver
 
     var id: Int { minute }
     var time: TimeOfDay { TimeOfDay(minutes: minute) }
@@ -57,23 +56,6 @@ nonisolated enum Coverage: String, Hashable, Sendable {
     case caregiver
     case helper
     case nobody
-
-    /// Written for the caregiver, in the second person.
-    var plainDescription: String {
-        switch self {
-        case .caregiver: "You're free"
-        case .helper: "Joy's there"
-        case .nobody: "Nobody's there"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .caregiver: "person.fill.checkmark"
-        case .helper: "hands.and.sparkles.fill"
-        case .nobody: "exclamationmark.triangle.fill"
-        }
-    }
 }
 
 /// Something the schedule cannot fix by itself.

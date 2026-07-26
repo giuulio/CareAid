@@ -161,11 +161,6 @@ struct DoseRow: View {
                         .themeFont(Theme.TypeScale.body)
                         .foregroundStyle(Theme.Palette.ink)
                 }
-
-                Label(slot.coverage.plainDescription, systemImage: slot.coverage.symbol)
-                    .themeFont(Theme.TypeScale.meta)
-                    .foregroundStyle(Theme.Palette.inkSecondary)
-                    .padding(.top, Theme.Space.xs)
             }
             Spacer(minLength: 0)
         }

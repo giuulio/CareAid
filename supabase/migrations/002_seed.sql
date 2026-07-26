@@ -123,9 +123,14 @@ insert into medication (id, recipient_id, name, rxcui, dose, schedule, scheduled
   ('44444444-4444-4444-8444-000000000009', '11111111-1111-4111-8111-111111111111',
    'Amlodipine', null, '5mg', 'Once daily, morning',
    array['08:00']::time[], 31, date '2017-05-22', true),
+  -- 07:00, not 07:30: the scheduler clusters doses within 30 minutes into
+  -- whichever slot it meets first (MedicationScheduler.Tolerance.clustering),
+  -- so 07:30 would have absorbed the entire 08:00 group into one slot
+  -- mislabelled "07:30" — ten tablets under a time nothing is actually taken
+  -- at. 07:00 is outside that window and stays its own handover.
   ('44444444-4444-4444-8444-000000000010', '11111111-1111-4111-8111-111111111111',
    'Omeprazole', null, '20mg', 'Once daily, before breakfast',
-   array['07:30']::time[], 12, date '2021-08-30', true),
+   array['07:00']::time[], 12, date '2021-08-30', true),
   ('44444444-4444-4444-8444-000000000011', '11111111-1111-4111-8111-111111111111',
    'Domperidone', null, '10mg', 'Three times daily, before meals',
    array['08:00','12:00','16:00']::time[], 64, date '2021-05-04', true),
