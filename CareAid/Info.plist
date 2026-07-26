@@ -9,6 +9,12 @@
   truthfully. Without it iOS always says no, the WhatsApp branch never runs,
   and a phone without WhatsApp installed would silently fall through to Safari
   instead of Messages.
+
+  UIAppFonts registers the bundled type. These are static instances cut from
+  the Nunito Sans and Inter variable fonts, one file per weight, because
+  SwiftUI's .weight() modifier does not drive OpenType variation axes — a
+  registered variable font only ever renders its default instance. The names
+  Theme.Face refers to are the PostScript names inside these files.
 -->
 <plist version="1.0">
 <dict>
@@ -16,6 +22,17 @@
 	<array>
 		<string>whatsapp</string>
 		<string>sms</string>
+	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>NunitoSans-Regular.ttf</string>
+		<string>NunitoSans-SemiBold.ttf</string>
+		<string>NunitoSans-Bold.ttf</string>
+		<string>NunitoSans-ExtraBold.ttf</string>
+		<string>Inter-Regular.ttf</string>
+		<string>Inter-Medium.ttf</string>
+		<string>Inter-SemiBold.ttf</string>
+		<string>Inter-Bold.ttf</string>
 	</array>
 </dict>
 </plist>

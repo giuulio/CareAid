@@ -44,6 +44,24 @@ nonisolated struct ArtifactRepository {
             .decoded([Artifact].self)
     }
 
+    /// Diary entries she has said yes to.
+    ///
+    /// Approving a `calendar_event` writes her phone's calendar, and the row it
+    /// came from is the *only* record CareAid keeps of it — nothing in §6 copies
+    /// an approved proposal into `timeline_event`. Without reading these back,
+    /// an appointment she just put in the diary is invisible on the app's own
+    /// calendar screen, which is the one place she'd look for it.
+    func diaryEntries() async throws -> [Artifact] {
+        try await client
+            .from("artifact")
+            .select()
+            .eq("recipient_id", value: Config.recipientID.uuidString)
+            .eq("kind", value: ArtifactKind.calendarEvent.rawValue)
+            .in("status", values: [ArtifactStatus.approved.rawValue, ArtifactStatus.done.rawValue])
+            .order("created_at", ascending: false)
+            .decoded([Artifact].self)
+    }
+
     /// Raises a question the scheduler found, as a normal proposal.
     ///
     /// The one insert the app performs. §7 gives the Edge Function ownership of

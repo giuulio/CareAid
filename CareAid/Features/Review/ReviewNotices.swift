@@ -3,17 +3,24 @@ import SwiftUI
 /// "That's the third missed evening dose this month."
 ///
 /// The whole reason 90 days of history gets sent with every capture. Sits above
-/// the cards because it reframes everything below it.
+/// the cards because it reframes everything below it, and it is the one thing
+/// on the sheet that is neither a record nor a decision — so it gets the accent
+/// fill and a filled glyph, rather than another white card she has to read to
+/// discover it is different. Colour and weight do that work; nothing here
+/// animates.
 struct PatternBanner: View {
     let patterns: [Pattern]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
             ForEach(Array(patterns.enumerated()), id: \.offset) { _, pattern in
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+                HStack(alignment: .top, spacing: Theme.Space.m) {
                     Image(systemName: "chart.line.uptrend.xyaxis")
                         .themeFont(Theme.TypeScale.icon)
-                        .foregroundStyle(Theme.Palette.accent)
+                        .foregroundStyle(Theme.Palette.onAccent)
+                        .frame(width: Theme.Space.xxl, height: Theme.Space.xxl)
+                        .background(Theme.Palette.accent, in: .circle)
+
                     Text(pattern.observation)
                         .themeFont(Theme.TypeScale.bodyStrong)
                         .foregroundStyle(Theme.Palette.ink)
@@ -25,6 +32,8 @@ struct PatternBanner: View {
         .padding(Theme.Space.l)
         .background(Theme.Palette.accentSoft)
         .clipShape(.rect(cornerRadius: Theme.Radius.large, style: .continuous))
+        .litEdge(radius: Theme.Radius.large)
+        .depth(contact: Theme.Depth.restingContact, ambient: Theme.Depth.restingAmbient)
     }
 }
 
@@ -38,10 +47,13 @@ struct FlagNotice: View {
 
     var body: some View {
         Card {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-                Image(systemName: isEscalation ? "exclamationmark.triangle" : "questionmark.circle")
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                Image(systemName: isEscalation ? "exclamationmark.triangle.fill" : "questionmark.circle.fill")
                     .themeFont(Theme.TypeScale.icon)
                     .foregroundStyle(Theme.Palette.accent)
+                    .frame(width: Theme.Space.xxl, height: Theme.Space.xxl)
+                    .background(Theme.Palette.accentSoft, in: .circle)
+
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     Text(flag.ask)
                         .themeFont(Theme.TypeScale.body)
@@ -68,13 +80,16 @@ struct FlagNotice: View {
     }
 }
 
-/// An event that has already been written. Greyed and unactionable — recording
-/// needs no permission, only acting does (CLAUDE.md §2, rule 4).
+/// An event that has already been written. Recessed and unactionable —
+/// recording needs no permission, only acting does (CLAUDE.md §2, rule 4).
+///
+/// It sits *into* the page while the proposals sit on top of it, so "already
+/// done" and "needs you" are told apart by depth before a word is read.
 struct RecordedEntry: View {
     let event: TimelineEvent
 
     var body: some View {
-        Card {
+        Card(prominence: .quiet) {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 HStack(spacing: Theme.Space.s) {
                     Image(systemName: event.kind.symbol)
@@ -86,7 +101,7 @@ struct RecordedEntry: View {
 
                 Text(event.headline)
                     .themeFont(Theme.TypeScale.bodyStrong)
-                    .foregroundStyle(Theme.Palette.inkSecondary)
+                    .foregroundStyle(Theme.Palette.ink)
 
                 if let detail = event.detail {
                     Text(detail)

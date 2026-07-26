@@ -1,21 +1,37 @@
 import SwiftUI
 
-/// One proposal, with one large thing to do and one small way to decline.
+/// One proposal, with one large thing to do and one way to put it right.
 ///
 /// The action label is the *outcome* in her words — "Tell Tom", not "Send
 /// family update" (CLAUDE.md §8).
+///
+/// Saying no is a re-recording, not a bin. A wrong card is us having
+/// misheard her, and the useful answer to that is her saying it again with the
+/// wrong version in front of her — which is also the best context the model
+/// will ever get. A card she simply doesn't want, she leaves.
 struct ReviewCard: View {
     let artifact: Artifact
     let decision: ReviewViewModel.Decision
     let approveAction: () -> Void
-    let dismissAction: () -> Void
+    let sayAgainAction: () -> Void
 
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text(headline)
-                    .themeFont(Theme.TypeScale.cardHeadline)
-                    .foregroundStyle(Theme.Palette.ink)
+                // The kind, as a glyph, before the headline says it in words.
+                // Three cards, three destinations (CLAUDE.md §9) — and she can
+                // tell them apart across the room, which is the point.
+                HStack(alignment: .top, spacing: Theme.Space.m) {
+                    Image(systemName: symbol)
+                        .themeFont(Theme.TypeScale.icon)
+                        .foregroundStyle(Theme.Palette.accent)
+                        .frame(width: Theme.Space.xxl, height: Theme.Space.xxl)
+                        .background(Theme.Palette.accentSoft, in: .circle)
+
+                    Text(headline)
+                        .themeFont(Theme.TypeScale.cardHeadline)
+                        .foregroundStyle(Theme.Palette.ink)
+                }
 
                 Text(detail)
                     .themeFont(Theme.TypeScale.body)
@@ -32,45 +48,40 @@ struct ReviewCard: View {
         }
     }
 
+    /// A diary entry decides differently — `DiaryProposal`. It writes into her
+    /// phone's own calendar, so it shows exactly what would land there and asks
+    /// a yes/no question instead of leading with one big button.
     @ViewBuilder
     private var decisionArea: some View {
-        switch decision {
-        case .pending:
-            VStack(spacing: Theme.Space.s) {
-                PrimaryButton(actionLabel, systemImage: symbol, action: approveAction)
-                SecondaryButton("Not this", action: dismissAction)
-            }
-        case .working:
-            HStack(spacing: Theme.Space.s) {
-                ProgressView()
-                Text("Just a moment…")
-                    .themeFont(Theme.TypeScale.body)
-                    .foregroundStyle(Theme.Palette.inkSecondary)
-            }
-            .frame(height: Theme.Size.secondaryButtonHeight)
-        case .approved:
-            settled("Done", symbol: "checkmark.circle.fill")
-        case .dismissed:
-            settled("Left it", symbol: "xmark.circle.fill")
-        case .failed(let message):
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text(message)
-                    .themeFont(Theme.TypeScale.meta)
-                    .foregroundStyle(Theme.Palette.inkSecondary)
-                PrimaryButton("Try again", systemImage: "arrow.clockwise", action: approveAction)
+        if case .calendarEvent(let payload) = artifact.payload {
+            DiaryProposal(
+                payload: payload,
+                decision: decision,
+                approveAction: approveAction,
+                sayAgainAction: sayAgainAction
+            )
+        } else {
+            switch decision {
+            case .pending:
+                VStack(spacing: Theme.Space.s) {
+                    PrimaryButton(actionLabel, systemImage: symbol, action: approveAction)
+                    SecondaryButton("Not quite — say it again", systemImage: "mic", action: sayAgainAction)
+                }
+            case .working:
+                WorkingLabel()
+            case .approved:
+                SettledLabel("Done", symbol: "checkmark.circle.fill")
+            case .dismissed:
+                SettledLabel("Left it", symbol: "xmark.circle.fill")
+            case .failed(let message):
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text(message)
+                        .themeFont(Theme.TypeScale.meta)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
+                    PrimaryButton("Try again", systemImage: "arrow.clockwise", action: approveAction)
+                }
             }
         }
-    }
-
-    private func settled(_ label: String, symbol: String) -> some View {
-        HStack(spacing: Theme.Space.s) {
-            Image(systemName: symbol)
-                .themeFont(Theme.TypeScale.icon)
-            Text(label)
-                .themeFont(Theme.TypeScale.bodyStrong)
-        }
-        .foregroundStyle(Theme.Palette.accent)
-        .frame(height: Theme.Size.secondaryButtonHeight)
     }
 
     // MARK: - Copy, per kind
@@ -89,8 +100,9 @@ struct ReviewCard: View {
     private var detail: String {
         switch artifact.payload {
         case .task(let p): p.title
-        case .calendarEvent(let p):
-            "\(p.title) — \(DisplayDate.dayLabel(for: p.startsAt)), \(DisplayDate.time(p.startsAt))"
+        // Just what it's called: `DiaryProposal` carries the when, the where and
+        // the reminders directly under it.
+        case .calendarEvent(let p): p.title
         case .familyUpdate(let p): "“\(p.draftText)”"
         case .question(let p): p.question
         case .timer(let p): "\(p.label) — \(DisplayDate.time(p.fireAt))"

@@ -39,6 +39,109 @@ struct CalendarEventRow: View {
     }
 }
 
+/// One appointment, and whether it has reached her phone's own calendar.
+///
+/// The status line is the point of the row. CareAid knowing about an
+/// appointment and her *phone* knowing about it are two different things, and
+/// the app used to imply the first meant the second. So it says which, and
+/// offers the one tap that fixes it.
+struct DiaryRow: View {
+    let item: DiaryItem
+    /// Set for rows that sit outside the day being shown, e.g. "Coming up".
+    var showsDay = false
+    /// Nil on a row that is only a pointer to another day — that day hasn't
+    /// been checked against her calendar, so it must not claim anything.
+    var state: CalendarViewModel.AddState?
+    var add: (() -> Void)?
+    var open: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+                Image(systemName: "calendar")
+                    .themeFont(Theme.TypeScale.meta)
+                    .foregroundStyle(Theme.Palette.accent)
+                    .frame(width: Theme.Space.xl, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    Text(item.title)
+                        .themeFont(Theme.TypeScale.body)
+                        .foregroundStyle(Theme.Palette.ink)
+                    if let detail = item.detail {
+                        Text(detail)
+                            .themeFont(Theme.TypeScale.meta)
+                            .foregroundStyle(Theme.Palette.inkSecondary)
+                    }
+                    if let location = item.location {
+                        Label(location, systemImage: "mappin.and.ellipse")
+                            .themeFont(Theme.TypeScale.meta)
+                            .foregroundStyle(Theme.Palette.inkSecondary)
+                    }
+                }
+
+                Spacer(minLength: Theme.Space.s)
+
+                Text(when)
+                    .themeFont(Theme.TypeScale.meta)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
+            }
+
+            if let state {
+                status(state)
+            }
+        }
+        .padding(.vertical, Theme.Space.xs)
+    }
+
+    @ViewBuilder
+    private func status(_ state: CalendarViewModel.AddState) -> some View {
+        if item.inPhoneCalendar {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Label("In your iPhone calendar", systemImage: "checkmark.circle.fill")
+                    .themeFont(Theme.TypeScale.meta)
+                    .foregroundStyle(Theme.Palette.accent)
+                if let open {
+                    Button("Open in Calendar", systemImage: "arrow.up.forward.app", action: open)
+                        .themeFont(Theme.TypeScale.bodyStrong)
+                        .buttonStyle(.borderless)
+                        .frame(minHeight: Theme.Size.minTouchTarget, alignment: .leading)
+                }
+            }
+        } else {
+            switch state {
+            case .idle:
+                if let add {
+                    Button("Put it in my iPhone calendar", systemImage: "calendar.badge.plus", action: add)
+                        .themeFont(Theme.TypeScale.bodyStrong)
+                        .buttonStyle(.borderless)
+                        .frame(minHeight: Theme.Size.minTouchTarget, alignment: .leading)
+                }
+            case .working:
+                ProgressView()
+                    .frame(minHeight: Theme.Size.minTouchTarget, alignment: .leading)
+            case .failed(let message):
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    Text(message)
+                        .themeFont(Theme.TypeScale.meta)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
+                    if let add {
+                        Button("Try again", systemImage: "arrow.clockwise", action: add)
+                            .themeFont(Theme.TypeScale.bodyStrong)
+                            .buttonStyle(.borderless)
+                            .frame(minHeight: Theme.Size.minTouchTarget, alignment: .leading)
+                    }
+                }
+            }
+        }
+    }
+
+    private var when: String {
+        showsDay
+            ? "\(DisplayDate.dayLabel(for: item.startsAt)), \(DisplayDate.time(item.startsAt))"
+            : DisplayDate.time(item.startsAt)
+    }
+}
+
 /// One handover: a time, who is there for it, and everything due then.
 struct DoseRow: View {
     let slot: ScheduleSlot

@@ -7,7 +7,7 @@
 // their ids. The app decodes and renders — it never inserts.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { loadCapture, buildContext } from "./context.ts";
+import { loadCapture, buildContext, buildCorrection } from "./context.ts";
 import { SYSTEM_PROMPT, userPrompt } from "./prompt.ts";
 import { selectProvider } from "./providers.ts";
 import { persist } from "./persist.ts";
@@ -41,7 +41,17 @@ Deno.serve(async (req) => {
       return json({ error: "capture has no text to extract" }, 400);
     }
 
-    const context = await buildContext(db, capture);
+    // Optional: this capture is her saying it again because a card was wrong.
+    const correction = body?.corrects_capture_id
+      ? await buildCorrection(db, {
+        corrects_capture_id: body.corrects_capture_id,
+        rejected_artifact_ids: body.rejected_artifact_ids,
+      })
+      : undefined;
+
+    const context = [await buildContext(db, capture), correction]
+      .filter(Boolean)
+      .join("\n\n");
     const provider = selectProvider();
 
     console.log(

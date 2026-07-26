@@ -20,7 +20,13 @@ final class ExtractionService {
         self.session = session
     }
 
-    func extract(captureID: UUID) async throws -> ExtractionResponse {
+    /// - Parameter correcting: set when this capture is her re-recording
+    ///   because a card was wrong. The function reads the earlier capture and
+    ///   its proposals itself — we only name them.
+    func extract(
+        captureID: UUID,
+        correcting: Correction? = nil
+    ) async throws -> ExtractionResponse {
         let url = baseURL.appendingPathComponent("extract")
 
         var request = URLRequest(url: url)
@@ -40,7 +46,11 @@ final class ExtractionService {
         request.timeoutInterval = 90
 
         request.httpBody = try JSONEncoder().encode(
-            ExtractRequest(captureID: captureID)
+            ExtractRequest(
+                captureID: captureID,
+                correctsCaptureID: correcting?.captureID,
+                rejectedArtifactIDs: correcting?.rejectedArtifactIDs
+            )
         )
 
         // Safe to send twice: the function keys its writes on `capture_id` and
@@ -77,11 +87,22 @@ final class ExtractionService {
 
 // MARK: - Request
 
+/// The earlier capture this one is putting right, and which of its proposals
+/// she said were wrong.
+nonisolated struct Correction: Sendable {
+    let captureID: UUID
+    let rejectedArtifactIDs: [UUID]
+}
+
 private struct ExtractRequest: Codable {
     let captureID: UUID
+    let correctsCaptureID: UUID?
+    let rejectedArtifactIDs: [UUID]?
 
     enum CodingKeys: String, CodingKey {
         case captureID = "capture_id"
+        case correctsCaptureID = "corrects_capture_id"
+        case rejectedArtifactIDs = "rejected_artifact_ids"
     }
 }
 

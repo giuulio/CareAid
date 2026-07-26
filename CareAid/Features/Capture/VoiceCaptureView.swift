@@ -12,9 +12,9 @@ struct VoiceCaptureView: View {
             case .listening:
                 listening
             case .writingDown(let partial):
-                working("Writing it down…", transcript: partial)
+                working("Writing it down…", symbol: "waveform", transcript: partial)
             case .thinking(let transcript):
-                working("Reading it back…", transcript: transcript)
+                working("Reading it back…", symbol: "text.magnifyingglass", transcript: transcript)
             case .failed(let message):
                 failed(message)
             }
@@ -29,7 +29,12 @@ struct VoiceCaptureView: View {
             )
         }
         .task { await voice.start() }
-        .onDisappear { voice.cancel() }
+        // Only when there is nothing to review. `cancel()` clears `review`, and
+        // `review` is what presents the sheet — so calling it once the sheet is
+        // up dismisses her own results out from under her. This screen
+        // disappears the moment the cover goes over it, and it disappears again
+        // if she takes a call mid-correction.
+        .onDisappear { if voice.review == nil { voice.cancel() } }
     }
 
     private var listening: some View {
@@ -53,8 +58,9 @@ struct VoiceCaptureView: View {
 
     /// Never a bare spinner (§8). If the live recogniser caught nothing — a
     /// simulator, or a phone that declined speech recognition — say what is
-    /// happening rather than showing an empty quote.
-    private func working(_ label: String, transcript: String) -> some View {
+    /// happening rather than showing an empty quote. The glyph changes with the
+    /// stage, so the wait has visible shape even before the words are read.
+    private func working(_ label: String, symbol: String, transcript: String) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             Card {
                 Text(transcript.isEmpty ? "I heard you. Getting the words down." : "“\(transcript)”")
@@ -63,12 +69,7 @@ struct VoiceCaptureView: View {
                         transcript.isEmpty ? Theme.Palette.inkSecondary : Theme.Palette.ink
                     )
             }
-            HStack(spacing: Theme.Space.m) {
-                ProgressView()
-                Text(label)
-                    .themeFont(Theme.TypeScale.bodyStrong)
-                    .foregroundStyle(Theme.Palette.inkSecondary)
-            }
+            ThinkingIndicator(label: label, symbol: symbol)
         }
     }
 
@@ -103,15 +104,29 @@ struct Waveform: View {
     let levels: [Float]
 
     var body: some View {
+        // Bars share the width they're given rather than each claiming a fixed
+        // 4pt: forty-eight of those plus their gaps come to more than an iPhone
+        // is wide, and an HStack that can't fit doesn't shrink — it overflows,
+        // dragging every card on the page sideways with it. Only visible once
+        // the waveform moved inside a card on the Review sheet.
         HStack(alignment: .center, spacing: Theme.Space.xs) {
             ForEach(0 ..< AudioRecorder.windowSize, id: \.self) { index in
                 Capsule()
-                    .fill(Theme.Palette.accent)
-                    .frame(width: Theme.Space.xs, height: height(at: index))
+                    .fill(
+                        LinearGradient(
+                            colors: [Theme.Palette.accentLit, Theme.Palette.accent],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(maxWidth: Theme.Size.waveformBar)
+                    .frame(height: height(at: index))
+                    .animation(Theme.Motion.waveform, value: levels.count)
             }
         }
         .frame(maxWidth: .infinity)
         .frame(height: Theme.Size.waveformHeight)
+        .accessibilityHidden(true)
     }
 
     private func height(at index: Int) -> CGFloat {

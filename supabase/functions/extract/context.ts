@@ -21,6 +21,67 @@ export async function loadCapture(db: SupabaseClient, captureID: string): Promis
   return data as Capture;
 }
 
+/** What the app tells us when this capture is her correcting an earlier one. */
+export interface CorrectionRequest {
+  corrects_capture_id: string;
+  rejected_artifact_ids?: string[];
+}
+
+/**
+ * The block that turns a second recording into a correction of the first.
+ *
+ * Assembled here rather than sent by the app, like every other piece of
+ * context (CLAUDE.md §7): the app passes ids, we read the rows. That also means
+ * the model sees what each earlier proposal *actually* was, not the app's
+ * shortened card copy.
+ */
+export async function buildCorrection(
+  db: SupabaseClient,
+  request: CorrectionRequest,
+): Promise<string> {
+  const [previous, artifacts] = await Promise.all([
+    db.from("capture").select("raw_text").eq("id", request.corrects_capture_id).maybeSingle(),
+    db.from("artifact")
+      .select("id, kind, payload, status")
+      .eq("capture_id", request.corrects_capture_id)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  const rejected = new Set(request.rejected_artifact_ids ?? []);
+  const lines = (artifacts.data ?? []).map((a) => {
+    const verdict = rejected.has(a.id)
+      ? "SHE SAID THIS ONE WAS WRONG"
+      : a.status === "approved" || a.status === "sent" || a.status === "done"
+      ? "she already approved this — it has happened"
+      : "she has not decided on this one";
+    return `- ${a.kind}: ${JSON.stringify(a.payload)} → ${verdict}`;
+  });
+
+  return `SHE IS CORRECTING AN EARLIER NOTE
+
+A few moments ago she said:
+"""
+${previous.data?.raw_text ?? "(the earlier note could not be read)"}
+"""
+
+That produced these proposals:
+${lines.length ? lines.join("\n") : "- (none)"}
+
+The recording below is her saying it again because something above was wrong.
+Treat the two notes as one story, with the new one authoritative wherever they
+disagree.
+
+- The timeline events from the earlier note are ALREADY RECORDED. Do not emit
+  them again. Emit an event only for something she has not already had recorded,
+  or where her correction changes what happened.
+- Do not re-propose anything she already approved. It is done.
+- Do not re-propose what she rejected unless her new words plainly ask for it.
+- Do re-propose anything she had not decided on that still stands, so she does
+  not lose it — the earlier proposals are being cleared from her screen.
+- If her correction is about the wording or a detail of a proposal, emit the
+  fixed version, not a note about the fix.`;
+}
+
 export async function buildContext(db: SupabaseClient, capture: Capture): Promise<string> {
   const recipientID = capture.recipient_id;
   const now = new Date();

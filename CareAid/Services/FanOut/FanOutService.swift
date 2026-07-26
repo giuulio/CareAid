@@ -31,7 +31,7 @@ struct FanOutService {
 
         switch artifact.payload {
         case .calendarEvent(let payload):
-            try await CalendarService().add(payload, artifactID: artifact.id)
+            try await CalendarService().add(payload, keyedOn: artifact.id)
 
         case .familyUpdate(let payload):
             let handle = try await handle(for: payload, isOffline: isOffline)

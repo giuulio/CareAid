@@ -37,12 +37,23 @@ struct ReviewView: View {
                     }
 
                     ForEach(Array(model.artifacts.enumerated()), id: \.element.id) { index, artifact in
-                        ReviewCard(
-                            artifact: artifact,
-                            decision: model.decision(for: artifact),
-                            approveAction: { Task { await model.approve(artifact) } },
-                            dismissAction: { Task { await model.dismiss(artifact) } }
-                        )
+                        Group {
+                            if let correction = model.correction,
+                               correction.artifactID == artifact.id {
+                                CorrectionCard(
+                                    model: model,
+                                    headline: "Tell me again",
+                                    state: correction.state
+                                )
+                            } else {
+                                ReviewCard(
+                                    artifact: artifact,
+                                    decision: model.decision(for: artifact),
+                                    approveAction: { Task { await model.approve(artifact) } },
+                                    sayAgainAction: { Task { await model.startCorrection(of: artifact) } }
+                                )
+                            }
+                        }
                         .staggered(index + model.events.count + model.flags.count + 1, appeared)
                     }
 
@@ -54,7 +65,7 @@ struct ReviewView: View {
         }
         .task {
             // The one animation in the app, used once (CLAUDE.md §8).
-            withAnimation(.easeOut(duration: 0.2)) { appeared = true }
+            withAnimation(Theme.Motion.stagger) { appeared = true }
         }
     }
 
@@ -106,10 +117,13 @@ struct ReviewView: View {
 private extension View {
     /// 200ms, offset a little per card so the stack lands rather than snaps.
     func staggered(_ index: Int, _ appeared: Bool) -> some View {
+        // Opacity only. The cards used to slide up as they arrived, which meant
+        // every headline on the sheet was in motion at the moment she started
+        // reading it. Fading in place gives the same "these landed in order"
+        // read without a single word moving.
         opacity(appeared ? 1 : 0)
-            .offset(y: appeared ? 0 : Theme.Space.xl)
             .animation(
-                .easeOut(duration: 0.2).delay(Double(index) * 0.04),
+                Theme.Motion.stagger.delay(Double(index) * Theme.Motion.staggerStep),
                 value: appeared
             )
     }

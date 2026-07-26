@@ -35,7 +35,7 @@ struct CalendarView: View {
             }
         }
         .task { await model.load() }
-        .onChange(of: model.selectedDay) { Task { await model.reschedule() } }
+        .onChange(of: model.selectedDay) { Task { await model.dayChanged() } }
     }
 
     // MARK: - The month
@@ -64,10 +64,15 @@ struct CalendarView: View {
 
     @ViewBuilder
     private var appointment: some View {
-        if !model.dayAppointments.isEmpty {
+        if !model.dayDiary.isEmpty {
             Section("Appointment") {
-                ForEach(model.dayAppointments) { event in
-                    CalendarEventRow(event: event)
+                ForEach(model.dayDiary) { item in
+                    DiaryRow(
+                        item: item,
+                        state: model.addState(for: item),
+                        add: { Task { await model.addToPhoneCalendar(item) } },
+                        open: { Task { await model.openInPhoneCalendar(item) } }
+                    )
                 }
                 ForEach(Array(model.questionTexts.enumerated()), id: \.offset) { _, question in
                     Label(question, systemImage: "questionmark.circle")
@@ -82,9 +87,9 @@ struct CalendarView: View {
         } else if model.isToday, let next = model.nextAppointment {
             Section("Coming up") {
                 Button {
-                    model.selectedDay = next.occurredAt
+                    model.selectedDay = next.startsAt
                 } label: {
-                    CalendarEventRow(event: next, showsDay: true)
+                    DiaryRow(item: next, showsDay: true)
                 }
                 .buttonStyle(.plain)
             }

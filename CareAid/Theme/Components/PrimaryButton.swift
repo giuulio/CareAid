@@ -4,6 +4,10 @@ import SwiftUI
 ///
 /// Label copy is the caller's job and should be human: "Tell Tom", not
 /// "Send family update".
+///
+/// Physically a key: a lit top face, a shadow underneath, travel and a haptic
+/// tick when it goes down. That is the useful half of skeuomorphism — the
+/// affordance, not the leather stitching.
 struct PrimaryButton: View {
     private let title: String
     private let systemImage: String?
@@ -27,13 +31,21 @@ struct PrimaryButton: View {
             .themeFont(Theme.TypeScale.button)
             .foregroundStyle(Theme.Palette.onAccent)
             .frame(maxWidth: .infinity)
-            .frame(height: Theme.Size.primaryButtonHeight)
-            .background(Theme.Palette.accent)
+            .frame(minHeight: Theme.Size.primaryButtonHeight)
+            .padding(.horizontal, Theme.Space.l)
+            .background(
+                LinearGradient(
+                    colors: [Theme.Palette.accentLit, Theme.Palette.accent],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             .clipShape(.rect(cornerRadius: Theme.Radius.medium, style: .continuous))
+            .litEdge(radius: Theme.Radius.medium)
             // The whole 72pt is the target, not just where the glyphs land.
             .contentShape(.rect(cornerRadius: Theme.Radius.medium, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TactileButtonStyle(radius: Theme.Radius.medium))
     }
 }
 

@@ -25,6 +25,8 @@ Everything else is a proposal she must approve, so only emit one when she has ac
 
 Give a task a due_at whenever there is a sensible moment to be reminded, and prefer the next time the thing can actually be done — ringing a surgery means the next weekday morning, not 3am tonight. A task with no due_at never becomes a reminder, so it quietly does nothing. This is a reminder time, not a claim about her health: setting one invents no fact.
 
+If the context says she is CORRECTING an earlier note, the two recordings are one story and hers is the last word. Fix what she is fixing, keep what still stands, and do not record the same event twice — the earlier note's events are already in her timeline. She recorded again because we got something wrong; do not make her say it a third time.
+
 Write for someone who is tired. Short sentences. No preamble.`;
 
 /** The capture, wrapped with everything the model needs to resolve it. */

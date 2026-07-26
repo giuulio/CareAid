@@ -23,6 +23,13 @@ final class CalendarViewModel {
         case failed(String)
     }
 
+    /// Whether an appointment has been put into her phone's own calendar yet.
+    enum AddState: Equatable {
+        case idle
+        case working
+        case failed(String)
+    }
+
     private(set) var state: State = .loading
 
     /// The day the whole screen is about.
@@ -33,6 +40,17 @@ final class CalendarViewModel {
     private(set) var events: [TimelineEvent] = []
     private(set) var medications: [Medication] = []
     private(set) var questions: [Artifact] = []
+
+    /// Appointments she has already approved into her diary. Read back because
+    /// nothing copies an approved `calendar_event` into `timeline_event` — see
+    /// `ArtifactRepository.diaryEntries()`.
+    private(set) var diary: [Artifact] = []
+
+    /// What is in the phone's Calendar app on the selected day. Empty when we
+    /// have no access to look, which reads as "not in her calendar" and offers
+    /// to put it there — the tap that follows asks for access.
+    private(set) var phoneTitles: [String] = []
+    private(set) var adding: [UUID: AddState] = [:]
 
     private(set) var schedule: ProposedSchedule?
     /// True once we've read her real diary. When false the screen says the plan
@@ -58,6 +76,7 @@ final class CalendarViewModel {
             async let upcomingTask = try TimelineRepository().upcoming(limit: 20)
             async let medicationsTask = try MedicationRepository().active()
             async let questionsTask = try ArtifactRepository().questions()
+            async let diaryTask = try ArtifactRepository().diaryEntries()
             async let caregiverTask = try CaregiverRepository().currentUser()
             async let everyoneTask = try CaregiverRepository().all()
 
@@ -66,14 +85,24 @@ final class CalendarViewModel {
             events = try await recentTask + upcomingTask
             medications = try await medicationsTask
             questions = try await questionsTask
+            diary = try await diaryTask
             caregiver = try await caregiverTask
             helpers = try await everyoneTask.filter { $0.id != caregiver?.id }
 
             state = .loaded
             await reschedule()
+            await refreshPhoneDiary()
         } catch {
             state = .failed(error.localizedDescription)
         }
+    }
+
+    /// Everything that depends on which day she is looking at: her tablets get
+    /// re-planned around that day's diary, and that day's appointments get
+    /// checked against her phone's calendar.
+    func dayChanged() async {
+        await reschedule()
+        await refreshPhoneDiary()
     }
 
     /// Re-plans the medication day. Called on load and whenever she picks a new
@@ -96,14 +125,11 @@ final class CalendarViewModel {
 
     func allowCalendar() async {
         try? await CalendarService().requestAccess()
-        await reschedule()
+        await dayChanged()
     }
 
     private func busyBlocks() async -> [BusyBlock] {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = Config.displayTimeZone
-        let start = calendar.startOfDay(for: selectedDay)
-        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
+        let (start, end) = CalendarService.dayWindow(selectedDay)
 
         do {
             let blocks = try await CalendarService().busyBlocks(from: start, to: end)
@@ -127,15 +153,43 @@ final class CalendarViewModel {
         dayEvents.filter { $0.kind == .appointment }
     }
 
+    /// The day's appointments as one list, each marked with whether it has
+    /// actually reached the phone's Calendar app.
+    var dayDiary: [DiaryItem] {
+        DiaryItem.merged(appointments: dayAppointments, diary: diaryOnSelectedDay)
+            .map { item in
+                var item = item
+                item.inPhoneCalendar = CalendarService.diaryContains(item.title, in: phoneTitles)
+                return item
+            }
+    }
+
+    private var diaryOnSelectedDay: [Artifact] {
+        diary.filter { artifact in
+            guard case .calendarEvent(let payload) = artifact.payload else { return false }
+            return DisplayDate.startOfDay(for: payload.startsAt) == startOfSelectedDay
+        }
+    }
+
+    func addState(for item: DiaryItem) -> AddState {
+        adding[item.id] ?? .idle
+    }
+
     /// Everything except the appointments, which get their own section.
     var dayRecord: [TimelineEvent] {
         dayEvents.filter { $0.kind != .appointment }
     }
 
-    var nextAppointment: TimelineEvent? {
-        events
-            .filter { $0.kind == .appointment && $0.occurredAt >= .now }
-            .min { $0.occurredAt < $1.occurredAt }
+    /// The next thing coming, from either record. Shown on today only, as a way
+    /// into the day it's on — so it carries no diary status: that day hasn't
+    /// been checked against her phone yet.
+    var nextAppointment: DiaryItem? {
+        DiaryItem
+            .merged(
+                appointments: events.filter { $0.kind == .appointment },
+                diary: diary
+            )
+            .first { $0.startsAt >= .now }
     }
 
     /// Days carrying something recorded, so the month grid can mark them.
@@ -152,6 +206,34 @@ final class CalendarViewModel {
     }
 
     // MARK: - Actions
+
+    /// Puts an appointment CareAid knows about into her phone's own calendar.
+    ///
+    /// The other half of the Review card's yes: an appointment recorded before
+    /// this screen existed — or seeded, or approved on a phone she has since
+    /// wiped — is CareAid's alone until someone offers to write it out. Safe to
+    /// tap twice: `CalendarService` finds the entry already there and edits it
+    /// in place rather than writing a second one.
+    func addToPhoneCalendar(_ item: DiaryItem) async {
+        adding[item.id] = .working
+        do {
+            try await CalendarService().add(item.payload, keyedOn: item.id)
+            await refreshPhoneDiary()
+            adding[item.id] = .idle
+        } catch {
+            adding[item.id] = .failed(error.localizedDescription)
+        }
+    }
+
+    /// Hands her over to the Calendar app on that day, where the rest of her
+    /// life already is.
+    func openInPhoneCalendar(_ item: DiaryItem) async {
+        await CalendarService.openSystemCalendar(on: item.startsAt)
+    }
+
+    private func refreshPhoneDiary() async {
+        phoneTitles = (try? await CalendarService().titles(on: selectedDay)) ?? []
+    }
 
     /// Turns one timing conflict into a question she can take to the appointment.
     ///

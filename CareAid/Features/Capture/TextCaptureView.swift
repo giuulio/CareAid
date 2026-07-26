@@ -49,7 +49,9 @@ struct TextCaptureView: View {
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: Theme.Size.textEditorMinHeight)
                 .padding(Theme.Space.m)
-                .background(Theme.Palette.surfaceRaised)
+                // A well, not a card: this one surface is somewhere she puts
+                // something *in*, so it recedes where everything else lifts.
+                .background(Theme.Palette.surfaceSunken)
                 .clipShape(.rect(cornerRadius: Theme.Radius.large, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous)
@@ -67,7 +69,7 @@ struct TextCaptureView: View {
     // MARK: - Working
 
     /// Never a bare spinner — she sees her own words while it thinks
-    /// (CLAUDE.md §8). Extraction takes about forty seconds.
+    /// (CLAUDE.md §8), and the indicator keeps moving for the ~13s round trip.
     private func working(_ label: String, transcript: String?) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if let transcript {
@@ -77,12 +79,7 @@ struct TextCaptureView: View {
                         .foregroundStyle(Theme.Palette.ink)
                 }
             }
-            HStack(spacing: Theme.Space.m) {
-                ProgressView()
-                Text(label)
-                    .themeFont(Theme.TypeScale.bodyStrong)
-                    .foregroundStyle(Theme.Palette.inkSecondary)
-            }
+            ThinkingIndicator(label: label, symbol: "text.magnifyingglass")
         }
     }
 

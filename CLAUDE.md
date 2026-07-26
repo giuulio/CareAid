@@ -42,6 +42,7 @@ A caregiver speaks one messy, tired thought. One AI pass turns it into a timelin
 | Layer | Choice |
 |---|---|
 | App | Swift 6 / SwiftUI, **iOS 26 minimum**, iPhone only, portrait locked |
+| Type | Nunito Sans (brand) + Inter (UI), bundled in `Resources/Fonts/` and registered via `UIAppFonts`. **Static instances, one file per weight** — SwiftUI's `.weight()` cannot drive a variable font's `wght` axis, so a registered variable TTF silently renders one weight for everything. Regenerate with `tools/instance_fonts.py`. |
 | Backend | Supabase — Postgres, Storage, Edge Functions (Deno/TypeScript) |
 | LLM | Anthropic Claude primary, OpenAI fallback. **Both behind one interface**, selected by `LLM_PROVIDER` env var. Both are hackathon sponsors — we support both deliberately. |
 | Speech-to-text | `transcribe` Edge Function, **provider behind one `STT_PROVIDER` env var** exactly like the LLM: `openai` (`gpt-4o-transcribe`, the default — that key is funded) or `elevenlabs` (Scribe, implemented and unused until the credits land). Apple `SFSpeechRecognizer` runs *alongside* it for the live on-screen transcript, and is the fallback if the round trip fails. |
@@ -282,21 +283,24 @@ Approving a `medication_update` writes to the `medication` table, which is what 
 
 The user is **tired**, possibly at 3am, one-handed, and may be 50–75 with presbyopia. Design for exhaustion, not just for age.
 
-- **Type:** body 19–20pt minimum (above the 17pt default). Card headlines 22pt. Brief one-liner 30pt. Support Dynamic Type throughout.
-- **Touch targets:** 56pt minimum. Primary actions 72pt tall.
-- **Contrast:** body text ≥ 7:1. No grey-on-grey.
-- **Liquid Glass on chrome only** — nav bars, toolbars, the mic button. **Content cards are solid and opaque.** Never put body text on glass; it's low-contrast by nature and our user can't afford that.
+- **Palette:** background warm paper `#FBF7F1`, ink `#1C3041`, accent `#4DA5D1`. Every value lives in `Theme.Palette`. (`#EBEDE9` was tried as the background and reverted — the warm paper reads better under the blue and buys a point of contrast on every piece of body copy.)
+- **Type:** **Nunito Sans** for brand and display (wordmark, titles, card headlines), **Inter** for everything else (body, buttons, metadata). Body 21pt. Card headlines 24pt. Brief one-liner 32pt. Home's greeting 40pt. Support Dynamic Type throughout.
+- **Weight is rationed.** The `CareAid` wordmark is the bold thing on Home; the greeting under it is Nunito Sans Regular, because at 40pt the size is already the emphasis and weight on top of it turns a question into a banner.
+- **Touch targets:** 60pt minimum. Primary actions 72pt tall. (60, not 44: Apple's floor is drawn for steady hands, and the research on arthritis and tremor puts the collapse in error rates at 60.)
+- **Contrast:** body text ≥ 7:1. No grey-on-grey. One deliberate exception, and only this one: `onAccent` on `accent` is 4.9:1, which clears WCAG's large-text bar for the 22pt+ semibold labels it carries and never sits behind body copy. **White on `#4DA5D1` is 2.75:1 — never use it.**
+- **Content cards are solid and opaque.** Never put body text on glass; it's low-contrast by nature and our user can't afford that. Liquid Glass is confined to system chrome — nav bars and toolbars. *The mic button is deliberately not glass:* a tinted glass disc on this background is the faintest thing on screen, and it is the one control the product depends on.
+- **Depth is additive, never load-bearing.** Modern skeuomorphism — a lit top edge, two shadows, a press that sinks. Turn every shadow off and the screen must still pass 7:1 and still be unambiguous. This is not neumorphism: never extrude a control from the background in its own colour.
 - **No modals, no nested navigation deeper than two levels, no gesture-only actions.** Every action is a visible button.
 - **Language:** "Tell Tom", not "Send family update". "Put it in the diary", not "Create calendar event". "Not this", not "Reject". Human dates: "this morning", "yesterday evening".
-- **One animation, used once:** the card stagger on the Review screen, 200ms. Nothing else moves.
+- **Text never moves.** Not on press, not on arrival, not ever — type that slides or scales makes a tired reader lose their place and start the sentence again. Motion acts on shadows, shapes and opacity only. Four things move in the whole app: the waveform while she speaks, one ring on `ThinkingIndicator` during extraction, a shadow collapsing under a press, and the Review stagger — which is a pure cross-fade, no offset. Adding a fifth needs an answer to *what does the reader lose if it doesn't move?* See `Theme.Motion`.
 - **Never lose input.** Persist the transcript before the LLM call. If extraction fails, the raw note survives and is visible.
 - Auto dark mode after 21:00.
 
 ### Screens
 
-1. **Home** — mic button dominant and centred. Above it "How's Mum?". Below, today's timeline strip (3 items max) and the next two upcoming things — both tappable through to the calendar. Two icons only: calendar top-left, her medication top-right. Secondary button for the keyboard. **This is not a chat UI** — no bubbles, no scrolling transcript, no AI reply on screen.
+1. **Home** — one question and one control. The bar carries three things and only three: calendar top-left, the `CareAid` wordmark centred, her medication top-right. Below it "How's Mum?", then the mic, dominant and centred, then a secondary button for the keyboard. **No timeline strip and no "coming up" cards** — they made Home a thing to read before it was a thing to speak into, and everything they showed is one tap away behind the calendar. **This is not a chat UI** — no bubbles, no scrolling transcript, no AI reply on screen.
 2. **Capture** — live waveform, transcript appears as it comes, cancel always available. Never a blank spinner.
-3. **Review** (full-screen sheet after capture) — transcript pinned at top in quotes. Then cards, staggered in: first the auto-committed record entry (greyed, no action), then the proposals. Each: plain-language headline, detail, one large primary button, one small "Not this". A pattern banner above if `patterns` is non-empty. "Approve all" at the bottom.
+3. **Review** (full-screen sheet after capture) — transcript pinned at top in quotes. Then cards, staggered in: first the auto-committed record entry (recessed and unactionable — it sits *into* the page while proposals sit on top of it, so "already done" and "needs you" are told apart by depth before a word is read; it is no longer greyed, because greying the text cost contrast the reader needs), then the proposals. Each: plain-language headline, detail, one large primary button, one small "Not this". A pattern banner above if `patterns` is non-empty. "Approve all" at the bottom.
 4. **Calendar** — one screen for everything time-shaped. Timeline, Schedule and Appointment Pack were three answers to *what about this day?*, so they are one destination: a stock month grid, then the selected day's appointment, what was recorded, her tablets with the caregiver's busy blocks and any timing question, and the brief. Built from **stock iOS parts** — grouped list, graphical `DatePicker` — because a calendar is the one screen every phone owner can already read. Type still comes from `Theme`, so the §8 sizes hold. The appointment pack (question bank → PDF via `ShareLink`) lives in the appointment section of the day it belongs to.
 5. **Her medication** — the full list, grouped by when it's taken, with the label's timing note and what's left in the box. Read-only.
 
