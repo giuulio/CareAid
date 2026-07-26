@@ -1,4 +1,4 @@
-# CareAid — Project Brief
+# CareAid - Project Brief
 
 ## 1. What we're building
 
