@@ -16,17 +16,16 @@ nonisolated enum DemoData {
 
     static let transcript = """
     Right, so — Mum had a bad night, she was up at three again and she'd
-    forgotten her evening Sinemet, I found it still in the tray. She seemed
-    a bit confused this morning but she's better now. I said I'd ring the
-    surgery about the dose because this is the third time this month.
-    Oh, and Tom's asking how she is. Her neurology thing is the 14th isn't it —
-    I need to remember to ask them about the night-time freezing.
+    forgotten her evening Sinemet, I found it still in the tray. She was a bit
+    confused this morning but she's better now. Dr Okafor's put her Sinemet up
+    to 25/125 from today. Oh, and Tom's asking how she is. And her neurology
+    appointment is the 14th of August, isn't it.
     """
 
     /// Words distinctive enough that three of them together mean the demo
     /// script and not a real note about a real evening.
     private static let markers = [
-        "sinemet", "tray", "tom", "surgery", "freezing", "neurology", "three again",
+        "sinemet", "tray", "tom", "okafor", "neurology", "three again", "25/125",
     ]
 
     /// Whether this transcript is the demo script.
@@ -46,7 +45,7 @@ nonisolated enum DemoData {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = Config.displayTimeZone
         let year = calendar.component(.year, from: .now)
-        var components = DateComponents(year: year, month: 8, day: 14, hour: 9, minute: 0)
+        var components = DateComponents(year: year, month: 8, day: 14, hour: 10, minute: 0)
         components.timeZone = Config.displayTimeZone
 
         guard let date = calendar.date(from: components) else { return .now }
@@ -54,6 +53,21 @@ nonisolated enum DemoData {
         components.year = year + 1
         return calendar.date(from: components) ?? date
     }
+
+    /// The circle's numbers, for when the backend that normally holds them is
+    /// the thing that's missing. Synthetic, like everything else here.
+    static func handle(for name: String) -> String? {
+        switch name.lowercased() {
+        case "tom": "+447700900123"
+        case "joy": "+447700900456"
+        default: nil
+        }
+    }
+
+    /// Sinemet's row in `002_seed.sql`. The medication card writes to it, so a
+    /// real id matters even in the fallback — a made-up one would update nothing
+    /// the moment the backend came back.
+    private static let sinemetID = UUID(uuidString: "44444444-4444-4444-8444-000000000001")!
 
     static let extractionResponse: ExtractionResponse = {
 
@@ -77,26 +91,39 @@ nonisolated enum DemoData {
                     severity: .medium,
                     tags: ["adherence"],
                     confidence: 0.9
+                ),
+                TimelineEvent(
+                    id: UUID(),
+                    recipientID: recipientID,
+                    captureID: captureID,
+                    kind: .symptom,
+                    occurredAt: Date(),
+                    headline: "Awake at three again, muddled this morning",
+                    detail: "Better by the time Sarah recorded this.",
+                    severity: .low,
+                    tags: ["sleep", "confusion"],
+                    confidence: 0.85
                 )
             ],
+            // Three, in the order she said them: her medicine, her brother,
+            // her diary.
             artifacts: [
                 Artifact(
                     id: UUID(),
                     recipientID: recipientID,
                     captureID: captureID,
-                    payload: .task(
-                        TaskPayload(
-                            title: "Ring the surgery about Mum's evening dose",
-                            dueAt: Calendar.current.date(
-                                byAdding: .day,
-                                value: 3,
-                                to: Date()
-                            ),
-                            why: "Sarah said this is the third missed evening dose this month."
+                    payload: .medicationUpdate(
+                        MedicationUpdatePayload(
+                            medicationID: sinemetID,
+                            medicationName: "Co-careldopa (Sinemet)",
+                            field: .dose,
+                            from: "25/100mg",
+                            to: "25/125mg",
+                            why: "Sarah said Dr Okafor increased it."
                         )
                     ),
                     status: .proposed,
-                    confidence: 0.95
+                    confidence: 0.92
                 ),
 
                 Artifact(
@@ -105,25 +132,10 @@ nonisolated enum DemoData {
                     captureID: captureID,
                     payload: .familyUpdate(
                         FamilyUpdatePayload(
-                            toCircleMemberID: nil,
+                            toCircleMemberID: UUID(uuidString: "33333333-3333-4333-8333-000000000001"),
                             toName: "Tom",
                             channel: .whatsapp,
-                            draftText: "Mum had a difficult night but she's doing better this morning. I found her evening medication still in the tray and I'm going to speak with the surgery."
-                        )
-                    ),
-                    status: .proposed,
-                    confidence: 0.9
-                ),
-
-                Artifact(
-                    id: UUID(),
-                    recipientID: recipientID,
-                    captureID: captureID,
-                    payload: .question(
-                        QuestionPayload(
-                            question: "Could we discuss Mum's night-time freezing?",
-                            forSpecialty: "Neurology",
-                            priority: 1
+                            draftText: "Mum had a broken night and missed her evening Sinemet, but she's brighter now. Dr Okafor has put her dose up to 25/125 from today. I'll let you know how she gets on."
                         )
                     ),
                     status: .proposed,
@@ -136,16 +148,16 @@ nonisolated enum DemoData {
                     captureID: captureID,
                     payload: .calendarEvent(
                         CalendarEventPayload(
-                            title: "Neurology appointment with Dr Okafor",
+                            title: "Dr Okafor, neurology",
                             startsAt: neurologyAppointment,
                             endsAt: nil,
-                            location: nil,
-                            notes: "Questions about night-time freezing.",
+                            location: "Royal Infirmary, outpatients",
+                            notes: "Ask about the night-time freezing.",
                             remindersMin: [1440, 60]
                         )
                     ),
                     status: .proposed,
-                    confidence: 0.85
+                    confidence: 0.88
                 )
             ],
             patterns: [
@@ -154,22 +166,18 @@ nonisolated enum DemoData {
                     evidenceEventIDs: []
                 )
             ],
-            flags: [
-                Flag(
-                    type: .ambiguousDate,
-                    text: "the 14th",
-                    ask: "Is the neurology appointment 14 August?"
-                )
-            ],
+            flags: [],
             brief: Brief(
                 id: UUID(),
                 recipientID: recipientID,
                 version: 1,
                 content: BriefContent(
-                    oneLiner: "Margaret Ellis lives with Parkinson's and Sarah helps coordinate daily care.",
+                    oneLiner: "Margaret is managing at home, but her nights are getting harder.",
                     currentConcerns: [],
                     medications: [],
-                    recentChanges: [],
+                    recentChanges: [
+                        "Dr Okafor increased her Sinemet to 25/125"
+                    ],
                     openQuestions: [
                         "Discuss night-time freezing with neurology."
                     ],

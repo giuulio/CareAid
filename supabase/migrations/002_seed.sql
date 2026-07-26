@@ -111,7 +111,38 @@ insert into medication (id, recipient_id, name, rxcui, dose, schedule, scheduled
    array['08:00']::time[], 25, date '2018-09-14', true),
   ('44444444-4444-4444-8444-000000000008', '11111111-1111-4111-8111-111111111111',
    'Adcal-D3', '608343', '1500mg/400iu', 'Twice daily, morning and evening',
-   array['08:00','20:00']::time[], 51, date '2022-01-10', true);
+   array['08:00','20:00']::time[], 51, date '2022-01-10', true),
+
+  -- The rest of the box. Fifteen medicines is ordinary for a 78-year-old with
+  -- Parkinson's and AF, and the point of listing them all is that the caregiver
+  -- is holding every one of them in her head.
+  --
+  -- rxcui is null on these: the eight above carry the codes
+  -- `tools/dailymed_extract.py` actually resolved, and inventing one here would
+  -- make RuleStore claim a label it never read.
+  ('44444444-4444-4444-8444-000000000009', '11111111-1111-4111-8111-111111111111',
+   'Amlodipine', null, '5mg', 'Once daily, morning',
+   array['08:00']::time[], 31, date '2017-05-22', true),
+  ('44444444-4444-4444-8444-000000000010', '11111111-1111-4111-8111-111111111111',
+   'Omeprazole', null, '20mg', 'Once daily, before breakfast',
+   array['07:30']::time[], 12, date '2021-08-30', true),
+  ('44444444-4444-4444-8444-000000000011', '11111111-1111-4111-8111-111111111111',
+   'Domperidone', null, '10mg', 'Three times daily, before meals',
+   array['08:00','12:00','16:00']::time[], 64, date '2021-05-04', true),
+  ('44444444-4444-4444-8444-000000000012', '11111111-1111-4111-8111-111111111111',
+   'Senna', null, '7.5mg', 'At night',
+   array['22:00']::time[], 40, date '2022-11-03', true),
+  ('44444444-4444-4444-8444-000000000013', '11111111-1111-4111-8111-111111111111',
+   'Melatonin (modified release)', null, '2mg', 'One hour before bed',
+   array['21:00']::time[], 16, date '2025-02-17', true),
+  ('44444444-4444-4444-8444-000000000014', '11111111-1111-4111-8111-111111111111',
+   'Macrogol (Laxido)', null, 'One sachet', 'Once daily, mid-morning',
+   array['10:00']::time[], 23, date '2023-06-19', true),
+  -- No scheduled_times on purpose: "when she needs it" is a real answer, and
+  -- the medication list has to be able to show one.
+  ('44444444-4444-4444-8444-000000000015', '11111111-1111-4111-8111-111111111111',
+   'Paracetamol', null, '500mg', 'As needed, up to 4x daily',
+   array[]::time[], 84, date '2019-01-08', true);
 
 -- ------------------------------------------------------------- captures ---
 
@@ -260,7 +291,14 @@ values ('11111111-1111-4111-8111-111111111111', 1,
       jsonb_build_object('name','Bisoprolol','dose','2.5mg','schedule','Once daily, morning','adherence_note',null),
       jsonb_build_object('name','Atorvastatin','dose','20mg','schedule','Once daily, evening','adherence_note',null),
       jsonb_build_object('name','Levothyroxine','dose','50mcg','schedule','Once daily, before breakfast','adherence_note',null),
-      jsonb_build_object('name','Adcal-D3','dose','1500mg/400iu','schedule','Twice daily','adherence_note',null)
+      jsonb_build_object('name','Adcal-D3','dose','1500mg/400iu','schedule','Twice daily','adherence_note',null),
+      jsonb_build_object('name','Amlodipine','dose','5mg','schedule','Once daily, morning','adherence_note',null),
+      jsonb_build_object('name','Omeprazole','dose','20mg','schedule','Once daily, before breakfast','adherence_note',null),
+      jsonb_build_object('name','Domperidone','dose','10mg','schedule','Three times daily, before meals','adherence_note',null),
+      jsonb_build_object('name','Senna','dose','7.5mg','schedule','At night','adherence_note',null),
+      jsonb_build_object('name','Melatonin (modified release)','dose','2mg','schedule','One hour before bed','adherence_note','Started in February for her nights'),
+      jsonb_build_object('name','Macrogol (Laxido)','dose','One sachet','schedule','Once daily, mid-morning','adherence_note',null),
+      jsonb_build_object('name','Paracetamol','dose','500mg','schedule','As needed','adherence_note',null)
     ),
     'recent_changes', jsonb_build_array(
       'Joy''s evening visit moved to 18:00',

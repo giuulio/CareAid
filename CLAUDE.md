@@ -88,7 +88,7 @@ xcrun simctl io booted screenshot /tmp/careaid.png
 ```
 CareAid/
 ├── App/            CareAidApp.swift, RootView.swift, AppState.swift, Config.swift
-├── Theme/          Theme.swift, ColorToken.swift, ThemeGallery.swift
+├── Theme/          Theme.swift, ColorToken.swift, ScaledFont.swift
 │   └── Components/ Card.swift, PrimaryButton.swift, ScreenScaffold.swift, MicButton.swift
 ├── Models/         Recipient, CircleMember, Medication, Capture,
 │                   TimelineEvent, Artifact, Brief, ExtractionResult
@@ -100,7 +100,7 @@ CareAid/
 │   ├── Rules/      medication_rules.json, RuleStore.swift
 │   └── FanOut/     CalendarService.swift, MessageService.swift,
 │                   ReminderService.swift, PDFService.swift
-├── Features/       Home/, Capture/, Review/, Timeline/, Schedule/, AppointmentPack/
+├── Features/       Home/, Capture/, Review/, Calendar/, Medications/
 └── Resources/
 supabase/
 ├── migrations/     001_schema.sql, 002_seed.sql
@@ -223,7 +223,7 @@ Approving a `medication_update` writes to the `medication` table, which is what 
 
 **One LLM call per capture. Not a chain.** Edge Function `extract`.
 
-**Models.** `LLM_PROVIDER` selects the provider and defaults to `openai` — that is where the hackathon credit is. `openai` → `gpt-5.6-sol`. `anthropic` → `claude-opus-5`. Both are implemented; switching is one env var and no code change.
+**Models.** `LLM_PROVIDER` selects the provider and defaults to `openai` — that is where the hackathon credit is. `openai` → `gpt-5.6-luna`. `anthropic` → `claude-opus-5`. Both are implemented; switching is one env var and no code change. Luna over Sol because the capture screen waits on this call in front of an audience: the same script extracts in ~13s rather than ~40s, and this is a structured-output job over an injected context, not a reasoning one.
 
 **The schema is enforced by the API, not by the prompt.** Both providers support structured outputs (OpenAI `json_schema`, Anthropic `output_config.format`), so the response below is guaranteed to match rather than merely asked to. The repair-and-retry path in PLAN.md C5 stays as a fallback for a provider that returns something unusable anyway, but it is no longer the main line.
 
@@ -272,7 +272,7 @@ Approving a `medication_update` writes to the `medication` table, which is what 
 3. Use circle members' real names in drafted messages. Match the caregiver's register — warm, plain, short. Three sentences maximum.
 4. Resolve relative times ("last night", "the 14th") against the supplied datetime. If ambiguous, flag it.
 5. `headline` ≤ 60 characters, plain English, no clinical jargon the caregiver didn't use themselves.
-6. If something may need urgent attention, emit a `possible_escalation` flag whose action is "call 111 or the GP" — never a cause.
+6. If something may need urgent attention, emit a `possible_escalation` flag whose action is "call 111 or the GP" — never a cause. Judge it on what is true *now*: something the caregiver reports as passed or already better is a record, not an escalation. A warning she has to dismiss for something she just said had resolved is how a real one gets ignored.
 7. Return JSON only, matching the schema exactly.
 8. Only emit a `medication_update` when the capture states the change outright — who changed it, and to what. Never infer one from a symptom, a missed dose or a pattern. If a change is implied but not stated, emit a `flag` instead. Phrase `why` as attribution ("Sarah said Dr Okafor increased it"), never as rationale.
 
@@ -294,22 +294,29 @@ The user is **tired**, possibly at 3am, one-handed, and may be 50–75 with pres
 
 ### Screens
 
-1. **Home** — mic button dominant and centred. Above it "How's Mum?". Below, today's timeline strip (3 items max) and the next two upcoming things — both tappable through to their full screens. Small icons top for Timeline / Schedule / Appointments. Secondary buttons for keyboard and camera. **This is not a chat UI** — no bubbles, no scrolling transcript, no AI reply on screen.
+1. **Home** — mic button dominant and centred. Above it "How's Mum?". Below, today's timeline strip (3 items max) and the next two upcoming things — both tappable through to the calendar. Two icons only: calendar top-left, her medication top-right. Secondary button for the keyboard. **This is not a chat UI** — no bubbles, no scrolling transcript, no AI reply on screen.
 2. **Capture** — live waveform, transcript appears as it comes, cancel always available. Never a blank spinner.
 3. **Review** (full-screen sheet after capture) — transcript pinned at top in quotes. Then cards, staggered in: first the auto-committed record entry (greyed, no action), then the proposals. Each: plain-language headline, detail, one large primary button, one small "Not this". A pattern banner above if `patterns` is non-empty. "Approve all" at the bottom.
-4. **Timeline** — reverse chronological, grouped by day, human date labels. Brief pinned at top as a card.
-5. **Schedule** — medication times, conflicts flagged, caregiver's busy blocks visible.
-6. **Appointment Pack** — question bank + "Make the pack" → PDF via `ShareLink`.
+4. **Calendar** — one screen for everything time-shaped. Timeline, Schedule and Appointment Pack were three answers to *what about this day?*, so they are one destination: a stock month grid, then the selected day's appointment, what was recorded, her tablets with the caregiver's busy blocks and any timing question, and the brief. Built from **stock iOS parts** — grouped list, graphical `DatePicker` — because a calendar is the one screen every phone owner can already read. Type still comes from `Theme`, so the §8 sizes hold. The appointment pack (question bank → PDF via `ShareLink`) lives in the appointment section of the day it belongs to.
+5. **Her medication** — the full list, grouped by when it's taken, with the label's timing note and what's left in the box. Read-only.
 
 ---
 
 ## 9. Demo script — build backwards from this
 
-The whole app exists to make this 25-second recording work:
+The whole app exists to make this 20-second recording work:
 
-> "Right, so — Mum had a bad night, she was up at three again and she'd forgotten her evening Sinemet, I found it still in the tray. She seemed a bit confused this morning but she's better now. I said I'd ring the surgery about the dose because this is the third time this month. Oh, and Tom's asking how she is. Her neurology thing is the 14th isn't it — I need to remember to ask them about the night-time freezing."
+> "Right, so — Mum had a bad night, she was up at three again and she'd forgotten her evening Sinemet, I found it still in the tray. She was a bit confused this morning but she's better now. Dr Okafor's put her Sinemet up to 25/125 from today. Oh, and Tom's asking how she is. And her neurology appointment is the 14th of August, isn't it."
 
-Must produce: (1) timeline entry, auto — (2) task: ring the surgery, due Monday — (3) drafted WhatsApp to Tom — (4) question for neurology re night-time freezing — (5) calendar event, Dr Okafor, 14 August — (6) pattern banner: *"That's the third missed evening dose this month."*
+Must produce: timeline entries, auto and greyed — a pattern banner, *"That's the third missed evening dose this month"* — and then **exactly three cards, in this order**:
+
+1. **Update her medicine** — Sinemet 25/100mg → 25/125mg, attributed to Dr Okafor via Sarah. Approving writes the `medication` row, so the medication list and the schedule move with it.
+2. **Tell Tom** — a drafted WhatsApp to her brother, opened in WhatsApp with the last tap still hers.
+3. **Put it in the diary** — Dr Okafor, 14 August, written to her real calendar with reminders.
+
+Three, not five. Each card is a different destination, which is the whole point — one input, three places, three taps. A fourth card of the same kind adds nothing to the argument and costs stage time.
+
+The medication card is only legal because the capture **states** the change and who made it (§7, rule 8). Take that sentence out of the script and the correct output is a flag, not a card.
 
 The pattern banner **only works because seeded history exists.** Seed data is not optional.
 
@@ -317,4 +324,4 @@ The pattern banner **only works because seeded history exists.** Seed data is no
 
 ## 10. Out of scope for V0 — do not build
 
-Auth. Onboarding. Settings. Multiple care recipients. Editing cards before approval (approve/dismiss only — the schedule screen is the one exception). Push notifications from a server. iPad. Landscape. A landing page. Dark mode toggle (auto only). Anything touching a real NHS or EHR API.
+Auth. Onboarding. Settings. Multiple care recipients. Editing cards before approval (approve/dismiss only). Push notifications from a server. iPad. Landscape. A landing page. Dark mode toggle (auto only). Anything touching a real NHS or EHR API.

@@ -44,7 +44,10 @@ function parseOutput(text: string, provider: string): ModelOutput {
 // MARK: - OpenAI
 
 function openai(): Provider {
-  const model = Deno.env.get("OPENAI_MODEL") ?? "gpt-5.6-sol";
+  // Luna over Sol: the capture screen sits on this call for the length of the
+  // pause on stage, and Luna is the faster of the two. The extraction is a
+  // structured-output job against an injected context, not a reasoning one.
+  const model = Deno.env.get("OPENAI_MODEL") ?? "gpt-5.6-luna";
   return {
     name: "openai",
     model,

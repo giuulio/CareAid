@@ -42,5 +42,5 @@ else
 fi
 
 echo
-echo "Done. Expect: 8 medications, 2 missed evening doses, Dr Okafor on 14 August."
+echo "Done. Expect: 15 medications, 2 missed evening doses, Dr Okafor on 14 August."
 echo "The demo capture is the THIRD missed dose — that is what the banner says."

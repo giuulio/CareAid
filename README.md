@@ -46,7 +46,7 @@ CareAid/
 │   ├── Schedule/   Caregiver-aware medication scheduler
 │   ├── Rules/      Offline-extracted medication timing rules
 │   └── FanOut/     Calendar, messaging, reminders, PDF export
-├── Features/       Home, Capture, Review, Timeline, Schedule, AppointmentPack
+├── Features/       Home, Capture, Review, Calendar, Medications
 └── Resources/
 supabase/
 ├── migrations/     Postgres schema and synthetic seed data
