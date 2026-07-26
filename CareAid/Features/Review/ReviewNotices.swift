@@ -77,7 +77,7 @@ struct RecordedEntry: View {
         Card {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 HStack(spacing: Theme.Space.s) {
-                    Image(systemName: TimelineEventRow.symbol(for: event.kind))
+                    Image(systemName: event.kind.symbol)
                         .themeFont(Theme.TypeScale.meta)
                     Text("Saved · \(DisplayDate.time(event.occurredAt))")
                         .themeFont(Theme.TypeScale.meta)

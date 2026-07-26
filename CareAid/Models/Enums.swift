@@ -12,6 +12,19 @@ nonisolated enum TimelineEventKind: String, Codable, Sendable, CaseIterable {
     case symptom, medication, incident, appointment, mood
     case careTask = "care_task"
     case admin
+
+    /// Categorical only — which *kind* of thing happened, never how bad it is.
+    var symbol: String {
+        switch self {
+        case .symptom: "waveform.path"
+        case .medication: "pills"
+        case .incident: "exclamationmark.triangle"
+        case .appointment: "stethoscope"
+        case .mood: "face.smiling"
+        case .careTask: "hands.and.sparkles"
+        case .admin: "tray.full"
+        }
+    }
 }
 
 nonisolated enum ArtifactKind: String, Codable, Sendable, CaseIterable {

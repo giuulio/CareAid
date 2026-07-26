@@ -56,7 +56,7 @@ struct HomeView: View {
     // image alongside the text. `NSCameraUsageDescription` and the `photo`
     // value of `capture.source` are already in place for it.
 
-    /// Today's timeline, three items maximum, through to the full history.
+    /// Today's timeline, three items maximum, through to the calendar.
     private var todayStrip: some View {
         HomeGlanceCard(
             title: "Today",
@@ -64,11 +64,11 @@ struct HomeView: View {
             events: model.today,
             label: { DisplayDate.time($0.occurredAt) }
         ) {
-            appState.path.append(.timeline)
+            appState.path.append(.calendar)
         }
     }
 
-    /// The next two things coming up, through to the appointment pack.
+    /// The next two things coming up, through to the same place.
     private var upcoming: some View {
         HomeGlanceCard(
             title: "Coming up",
@@ -76,7 +76,7 @@ struct HomeView: View {
             events: model.upcoming,
             label: { "\(DisplayDate.dayLabel(for: $0.occurredAt)), \(DisplayDate.time($0.occurredAt))" }
         ) {
-            appState.path.append(.appointmentPack)
+            appState.path.append(.calendar)
         }
     }
 
@@ -90,15 +90,15 @@ struct HomeView: View {
         }
     }
 
+    /// Two icons, one on each side of the mic's sightline: the calendar holds
+    /// everything time-shaped, the list holds everything she takes.
     @ToolbarContentBuilder
     private var destinationIcons: some ToolbarContent {
-        ToolbarItemGroup(placement: .topBarTrailing) {
-            toolbarLink(to: .timeline, icon: "clock.arrow.circlepath", label: "Timeline")
-            toolbarLink(to: .schedule, icon: "pills", label: "Schedule")
-            toolbarLink(to: .appointmentPack, icon: "stethoscope", label: "Appointments")
-            #if DEBUG
-            toolbarLink(to: .themeGallery, icon: "paintpalette", label: "Theme gallery")
-            #endif
+        ToolbarItem(placement: .topBarLeading) {
+            toolbarLink(to: .calendar, icon: "calendar", label: "Calendar")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            toolbarLink(to: .medications, icon: "pills", label: "Her medication")
         }
     }
 

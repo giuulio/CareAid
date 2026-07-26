@@ -26,15 +26,11 @@ struct RootView: View {
             VoiceCaptureView()
         case .textCapture:
             TextCaptureView()
-        case .timeline:
-            TimelineView()
-        case .schedule:
-            ScheduleView()
-        case .appointmentPack:
-            AppointmentPackView()
+        case .calendar:
+            CalendarView()
+        case .medications:
+            MedicationsView()
         #if DEBUG
-        case .themeGallery:
-            ThemeGallery()
         case .demoReview:
             // isOffline: these rows are not in the database, so decisions must
             // not try to PATCH them — same path the wifi fallback uses.

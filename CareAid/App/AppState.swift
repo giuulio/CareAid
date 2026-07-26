@@ -8,11 +8,12 @@ import SwiftUI
 enum Route: Hashable {
     case voiceCapture
     case textCapture
-    case timeline
-    case schedule
-    case appointmentPack
+    /// What happened, what's coming and when her tablets are due — one screen.
+    /// Timeline, Schedule and Appointments were three answers to "what about
+    /// this day?", so they are one destination now.
+    case calendar
+    case medications
     #if DEBUG
-    case themeGallery
     /// The Review sheet, filled from `DemoData`. Rehearsal and screenshots
     /// without spending forty seconds and an LLM call each time.
     case demoReview
@@ -24,10 +25,8 @@ enum Route: Hashable {
         switch argumentName {
         case "voice": self = .voiceCapture
         case "text": self = .textCapture
-        case "timeline": self = .timeline
-        case "schedule": self = .schedule
-        case "appointments": self = .appointmentPack
-        case "theme": self = .themeGallery
+        case "calendar": self = .calendar
+        case "meds": self = .medications
         case "review": self = .demoReview
         default: return nil
         }

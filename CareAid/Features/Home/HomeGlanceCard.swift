@@ -48,7 +48,7 @@ struct HomeGlanceCard: View {
 
     private func row(_ event: TimelineEvent) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            Image(systemName: TimelineEventRow.symbol(for: event.kind))
+            Image(systemName: event.kind.symbol)
                 .themeFont(Theme.TypeScale.meta)
                 .foregroundStyle(Theme.Palette.accent)
                 // Keeps the headlines left-aligned with each other rather than
