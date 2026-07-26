@@ -149,14 +149,18 @@ enum Theme {
     /// and the literature is blunter still: 16pt is the floor, 18–20pt is where
     /// older readers stop struggling.
     enum TypeScale {
-        /// The wordmark in the navigation bar. The one bold thing on Home —
-        /// which is what lets the greeting under it be light without the screen
-        /// losing its anchor.
-        static let brandTitle = TypeToken(face: Face.brandBold, size: 22, relativeTo: .title3)
-        /// The greeting on Home, and nothing else. The largest thing in the
-        /// app, and deliberately *not* bold: at 40pt the size is already the
-        /// emphasis, and weight on top of it turns a question into a headline.
-        static let hero = TypeToken(face: Face.brandRegular, size: 40, relativeTo: .largeTitle)
+        /// The wordmark on the splash.
+        static let splashTitle = TypeToken(face: Face.brandBold, size: 44, relativeTo: .largeTitle)
+        /// The wordmark in Home's header. Sized against the 48pt icons either
+        /// side of it — at the old 22pt it read as a caption between two large
+        /// glyphs rather than as the thing they flank.
+        static let brandTitle = TypeToken(face: Face.brandBold, size: 34, relativeTo: .title)
+        /// The greeting on Home, and nothing else. Deliberately *not* bold: at
+        /// this size the scale is already the emphasis, and weight on top of it
+        /// turns a question into a banner. 30pt rather than 40 because the
+        /// question got longer — "How are we helping Mum today?" sets to two
+        /// comfortable lines here, and to four cramped ones at 40.
+        static let hero = TypeToken(face: Face.brandRegular, size: 30, relativeTo: .largeTitle)
         /// The brief's one-liner.
         static let briefOneLiner = TypeToken(face: Face.brandBold, size: 32, relativeTo: .largeTitle)
         /// Screen titles.
@@ -176,9 +180,13 @@ enum Theme {
         /// Metadata only — timestamps, captions. Never body copy.
         static let meta = TypeToken(face: Face.textMedium, size: 18, relativeTo: .subheadline)
 
-        /// Toolbar and inline SF Symbols. System font on purpose — see
-        /// `TypeToken.face`.
+        /// Inline SF Symbols. System font on purpose — see `TypeToken.face`.
         static let icon = TypeToken(face: nil, size: 24, weight: .medium, relativeTo: .body)
+        /// Home's two destination icons, at double `icon`. They are the only
+        /// way off this screen other than the mic, and they sit in a custom
+        /// header rather than a `.toolbar` for exactly this reason: a 48pt
+        /// glyph does not fit a 44pt system navigation bar, it gets clipped.
+        static let navIcon = TypeToken(face: nil, size: 48, weight: .medium, relativeTo: .title)
         /// The larger glyph that leads a card or a row.
         static let iconLarge = TypeToken(face: nil, size: 30, weight: .medium, relativeTo: .title3)
     }
@@ -194,6 +202,11 @@ enum Theme {
         static let primaryButtonHeight: CGFloat = 72
         /// Secondary actions.
         static let secondaryButtonHeight: CGFloat = 60
+        /// Tap target around each of Home's two header icons. Bigger than
+        /// `minTouchTarget` because the 48pt glyph inside needs the room.
+        static let headerIcon: CGFloat = 64
+        /// The brand mark on the splash.
+        static let brandMark: CGFloat = 132
         /// The mic. Dominant by a wide margin; it is the whole point of Home.
         static let micDiameter: CGFloat = 200
         /// The mic glyph inside it. Fixed — the circle does not grow with type.
@@ -267,13 +280,18 @@ enum Theme {
     /// - a **shadow** collapsing under a press, which is how a button says
     ///   "yes, that registered" without touching its own label;
     /// - the Review **stagger**, a pure cross-fade, CLAUDE.md §8's one
-    ///   sanctioned animation.
+    ///   sanctioned animation;
+    /// - the **splash** handing over to Home, also a pure cross-fade.
     ///
     /// Everything else is static, and adding to this list needs a reason that
     /// survives the question *what does the reader lose if it doesn't move?*
     enum Motion {
         /// Press and release. Critically damped-ish; no overshoot.
         static let press = Animation.spring(response: 0.28, dampingFraction: 0.78)
+        /// The splash dissolving into Home. Slightly longer than the stagger so
+        /// the handover reads as one screen becoming another rather than as a
+        /// flicker at launch.
+        static let splashOut = Animation.easeOut(duration: 0.25)
         /// The Review stagger — CLAUDE.md §8's one animation, still 200ms.
         static let stagger = Animation.easeOut(duration: 0.2)
         /// Per-card delay in that stagger.

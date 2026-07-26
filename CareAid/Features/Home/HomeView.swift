@@ -14,15 +14,18 @@ struct HomeView: View {
     var body: some View {
         ScreenScaffold(fillsHeight: true) {
             VStack(spacing: Theme.Space.xl) {
-                Spacer(minLength: Theme.Space.xxl)
+                header
 
-                // The only sentence on the screen, so it gets to be the largest
-                // thing in the app — and the lightest. `CareAid` in the bar is
-                // the only bold thing up here; the greeting is a question, not
-                // a banner, and reads better spoken than shouted.
-                Text("How's \(appState.recipientDisplayName)?")
+                Spacer(minLength: Theme.Space.xl)
+
+                // The only sentence on the screen, and the lightest thing on
+                // it. `CareAid` above is the one bold weight up here; the
+                // greeting is a question, and reads better asked than
+                // announced.
+                Text("How are we helping \(appState.recipientDisplayName) today?")
                     .themeFont(Theme.TypeScale.hero)
                     .foregroundStyle(Theme.Palette.ink)
+                    .multilineTextAlignment(.center)
                     .minimumScaleFactor(0.7)
 
                 Spacer(minLength: Theme.Space.l)
@@ -31,18 +34,37 @@ struct HomeView: View {
                     appState.path.append(.voiceCapture)
                 }
 
-                Spacer(minLength: Theme.Space.l)
+                // Everything above is centred on the mic; typing is the way out
+                // for the night she cannot speak, so it waits at the bottom
+                // where her thumb already is rather than competing on the way
+                // down to it.
+                Spacer(minLength: Theme.Space.xxl)
 
                 typeButton
-
-                Spacer(minLength: Theme.Space.xxl)
             }
             .frame(maxWidth: .infinity)
         }
-        .toolbar { chrome }
+        // Home draws its own header: the 48pt destination icons do not fit a
+        // 44pt system navigation bar, they get clipped.
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     // MARK: - Pieces
+
+    /// The calendar holds everything time-shaped, the list holds everything she
+    /// takes, and the name sits between them. Equal-width buttons either side
+    /// so the wordmark is optically centred rather than centred-ish.
+    private var header: some View {
+        HStack(spacing: Theme.Space.s) {
+            headerLink(to: .calendar, icon: "calendar", label: "Calendar")
+            Spacer(minLength: Theme.Space.s)
+            Text("CareAid")
+                .themeFont(Theme.TypeScale.brandTitle)
+                .foregroundStyle(Theme.Palette.ink)
+            Spacer(minLength: Theme.Space.s)
+            headerLink(to: .medications, icon: "pills", label: "Her medication")
+        }
+    }
 
     private var typeButton: some View {
         SecondaryButton("Type it", systemImage: "keyboard") {
@@ -58,30 +80,17 @@ struct HomeView: View {
     // image alongside the text. `NSCameraUsageDescription` and the `photo`
     // value of `capture.source` are already in place for it.
 
-    /// The bar: the calendar holds everything time-shaped, the list holds
-    /// everything she takes, and the name sits between them.
-    @ToolbarContentBuilder
-    private var chrome: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            toolbarLink(to: .calendar, icon: "calendar", label: "Calendar")
-        }
-        ToolbarItem(placement: .principal) {
-            Text("CareAid")
-                .themeFont(Theme.TypeScale.brandTitle)
-                .foregroundStyle(Theme.Palette.ink)
-        }
-        ToolbarItem(placement: .topBarTrailing) {
-            toolbarLink(to: .medications, icon: "pills", label: "Her medication")
-        }
-    }
-
-    private func toolbarLink(to route: Route, icon: String, label: String) -> some View {
+    private func headerLink(to route: Route, icon: String, label: String) -> some View {
         Button {
             appState.path.append(route)
         } label: {
             Image(systemName: icon)
-                .themeFont(Theme.TypeScale.icon)
+                .themeFont(Theme.TypeScale.navIcon)
+                .foregroundStyle(Theme.Palette.accent)
+                .frame(width: Theme.Size.headerIcon, height: Theme.Size.headerIcon)
+                .contentShape(.rect)
         }
+        .buttonStyle(.plain)
         .accessibilityLabel(label)
     }
 }

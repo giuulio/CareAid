@@ -4,11 +4,26 @@ import SwiftUI
 /// which is the whole of CLAUDE.md §8's two-level cap.
 struct RootView: View {
     @State private var appState = AppState()
+    @State private var showingSplash = true
 
     var body: some View {
-        NavigationStack(path: $appState.path) {
-            HomeView()
-                .navigationDestination(for: Route.self, destination: destination)
+        ZStack {
+            NavigationStack(path: $appState.path) {
+                HomeView()
+                    .navigationDestination(for: Route.self, destination: destination)
+            }
+
+            if showingSplash {
+                SplashView()
+                    // Fades rather than cuts. Nothing on the splash moves, and
+                    // nothing on Home moves to meet it — only the opacity does,
+                    // so no text slides at the one moment she is orienting.
+                    .transition(.opacity)
+            }
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(500))
+            withAnimation(Theme.Motion.splashOut) { showingSplash = false }
         }
         .environment(appState)
         .tint(Theme.Palette.accent)
