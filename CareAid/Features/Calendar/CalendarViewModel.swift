@@ -90,6 +90,15 @@ final class CalendarViewModel {
         )
     }
 
+    /// Shown as a row rather than an alert on arrival: the prompt is hers to
+    /// ask for. Hidden once she has answered either way.
+    var canOfferCalendar: Bool { CalendarService.canAsk }
+
+    func allowCalendar() async {
+        try? await CalendarService().requestAccess()
+        await reschedule()
+    }
+
     private func busyBlocks() async -> [BusyBlock] {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = Config.displayTimeZone

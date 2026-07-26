@@ -29,6 +29,7 @@ struct MedicationsView: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(Theme.Palette.surface)
+        .toolbarBackground(Theme.Palette.surface, for: .navigationBar)
         .navigationTitle("Her medication")
         .navigationBarTitleDisplayMode(.inline)
         .task { await model.load() }

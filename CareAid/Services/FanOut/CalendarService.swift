@@ -23,6 +23,22 @@ struct CalendarService {
         }
     }
 
+    /// Whether she has already said yes.
+    ///
+    /// Checked before *reading* her diary. Asking is a modal alert that freezes
+    /// the screen behind it until it's answered — fine when she just tapped
+    /// "put it in the diary", wrong when she only opened the calendar to look at
+    /// it, where it reads as a screen that won't scroll.
+    static var hasAccess: Bool {
+        EKEventStore.authorizationStatus(for: .event) == .fullAccess
+    }
+
+    /// Whether asking would show the alert, rather than silently failing
+    /// against a decision she already made in Settings.
+    static var canAsk: Bool {
+        EKEventStore.authorizationStatus(for: .event) == .notDetermined
+    }
+
     func requestAccess() async throws {
         guard try await store.requestFullAccessToEvents() else {
             throw CalendarError.accessDenied
@@ -101,8 +117,13 @@ struct CalendarService {
     }
 
     /// C12 reads these to find the gaps where she can actually hand over pills.
+    ///
+    /// Never prompts. A screen that only *reads* her diary asks for nothing —
+    /// it says what it would do with access and offers a button (see the
+    /// calendar's tablets section), and the answer arrives through
+    /// `requestAccess()` on a tap she chose to make.
     func busyBlocks(from start: Date, to end: Date) async throws -> [(start: Date, end: Date)] {
-        try await requestAccess()
+        guard Self.hasAccess else { throw CalendarError.accessDenied }
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
         return store.events(matching: predicate)
             .filter { !$0.isAllDay && $0.availability != .free }

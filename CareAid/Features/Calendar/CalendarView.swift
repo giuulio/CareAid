@@ -20,8 +20,11 @@ struct CalendarView: View {
         .listStyle(.insetGrouped)
         // Native structure, CareAid's paper. The default grouped background is
         // cool grey and would be the one screen in the app that isn't warm.
+        // The toolbar needs telling too, or rows scroll up into a clear bar and
+        // collide with the title.
         .scrollContentBackground(.hidden)
         .background(Theme.Palette.surface)
+        .toolbarBackground(Theme.Palette.surface, for: .navigationBar)
         .navigationTitle(DisplayDate.dayLabel(for: model.selectedDay))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -115,6 +118,15 @@ struct CalendarView: View {
             Section {
                 ForEach(schedule.slots) { slot in
                     DoseRow(slot: slot)
+                }
+                if model.canOfferCalendar {
+                    Button {
+                        Task { await model.allowCalendar() }
+                    } label: {
+                        Label("Work around my diary", systemImage: "calendar.badge.plus")
+                            .themeFont(Theme.TypeScale.bodyStrong)
+                            .frame(minHeight: Theme.Size.minTouchTarget, alignment: .leading)
+                    }
                 }
             } header: {
                 Text("Her tablets")

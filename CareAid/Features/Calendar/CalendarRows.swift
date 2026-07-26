@@ -51,20 +51,25 @@ struct DoseRow: View {
                 .monospacedDigit()
 
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text(names)
-                    .themeFont(Theme.TypeScale.body)
-                    .foregroundStyle(Theme.Palette.ink)
+                // One per line. She takes ten things at eight in the morning,
+                // and as a comma-separated paragraph that is unreadable at 3am.
+                ForEach(names, id: \.self) { name in
+                    Text(name)
+                        .themeFont(Theme.TypeScale.body)
+                        .foregroundStyle(Theme.Palette.ink)
+                }
 
                 Label(slot.coverage.plainDescription, systemImage: slot.coverage.symbol)
                     .themeFont(Theme.TypeScale.meta)
                     .foregroundStyle(Theme.Palette.inkSecondary)
+                    .padding(.top, Theme.Space.xs)
             }
             Spacer(minLength: 0)
         }
     }
 
-    private var names: String {
-        slot.doses.map(\.medication.name).joined(separator: ", ")
+    private var names: [String] {
+        slot.doses.map(\.medication.name).sorted()
     }
 }
 
