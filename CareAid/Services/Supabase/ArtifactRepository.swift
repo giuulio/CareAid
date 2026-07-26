@@ -64,7 +64,8 @@ nonisolated struct ArtifactRepository {
             ))
             .select()
             .single()
-            .decoded(Artifact.self)
+            // An insert is not safe to send twice — see `retryingTransient`.
+            .decoded(Artifact.self, retryOnDrop: false)
     }
 
     func setStatus(_ status: ArtifactStatus, for id: UUID) async throws {
@@ -75,7 +76,7 @@ nonisolated struct ArtifactRepository {
                 "actioned_at": Date.now.formatted(JSONCoding.fullTimestamp),
             ])
             .eq("id", value: id.uuidString)
-            .execute()
+            .executed()
     }
 }
 

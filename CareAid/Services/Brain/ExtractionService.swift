@@ -43,9 +43,13 @@ final class ExtractionService {
             ExtractRequest(captureID: captureID)
         )
 
-        let (data, response) = try await session.data(
-            for: request
-        )
+        // Safe to send twice: the function keys its writes on `capture_id` and
+        // replaces that capture's rows, so a retry cannot double-write. Worth
+        // it — this call follows a long pause, which is exactly when a pooled
+        // connection turns out to be dead.
+        let (data, response) = try await Backend.retryingTransient {
+            try await session.data(for: request)
+        }
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ExtractionError.invalidResponse

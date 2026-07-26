@@ -34,7 +34,8 @@ nonisolated struct CaptureRepository {
             .insert(row)
             .select()
             .single()
-            .decoded(Capture.self)
+            // An insert is not safe to send twice — see `retryingTransient`.
+            .decoded(Capture.self, retryOnDrop: false)
     }
 
     func find(id: UUID) async throws -> Capture? {
