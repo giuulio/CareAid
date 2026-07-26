@@ -82,7 +82,7 @@ struct ReviewCard: View {
         case .familyUpdate(let p): "Tell \(p.toName)"
         case .question: "To ask at the appointment"
         case .timer: "A reminder"
-        case .medicationUpdate: "Update her record"
+        case .medicationUpdate(let p): "A change to her \(p.medicationName)"
         }
     }
 
@@ -94,9 +94,21 @@ struct ReviewCard: View {
         case .familyUpdate(let p): "“\(p.draftText)”"
         case .question(let p): p.question
         case .timer(let p): "\(p.label) — \(DisplayDate.time(p.fireAt))"
-        case .medicationUpdate(let p):
-            "\(p.medicationName): \(p.field.rawValue) becomes \(p.to)"
+        case .medicationUpdate(let p): Self.change(p)
         }
+    }
+
+    /// A reported change, in the words she'd use — never the column name.
+    private static func change(_ payload: MedicationUpdatePayload) -> String {
+        let from = payload.from.map { "was \($0)" }
+        let line: String = switch payload.field {
+        case .dose: "Dose becomes \(payload.to)"
+        case .schedule: "Now \(payload.to)"
+        case .scheduledTimes: "Times become \(payload.to.replacingOccurrences(of: ",", with: ", "))"
+        case .active: payload.to.lowercased() == "false" ? "Stopped" : "Started again"
+        case .quantityRemaining: "\(payload.to) left in the box"
+        }
+        return [line, from].compactMap { $0 }.joined(separator: " — ")
     }
 
     /// The model's reason, where it has one. Shown small — it is context, not

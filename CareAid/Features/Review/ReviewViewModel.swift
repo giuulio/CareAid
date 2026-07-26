@@ -62,7 +62,7 @@ final class ReviewViewModel {
     func approve(_ artifact: Artifact) async {
         decisions[artifact.id] = .working
         do {
-            try await FanOutService().perform(artifact)
+            try await FanOutService().perform(artifact, isOffline: isOffline)
             try await record(.approved, for: artifact)
             decisions[artifact.id] = .approved
         } catch {

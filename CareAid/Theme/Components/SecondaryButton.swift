@@ -34,6 +34,7 @@ struct SecondaryButton: View {
                 RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
                     .strokeBorder(Theme.Palette.hairline, lineWidth: Theme.Size.hairline)
             }
+            .contentShape(.rect(cornerRadius: Theme.Radius.medium, style: .continuous))
         }
         .buttonStyle(.plain)
     }

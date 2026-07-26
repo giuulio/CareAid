@@ -61,10 +61,15 @@ struct CalendarService {
         return event.eventIdentifier
     }
 
+    /// A phone with no *default* calendar usually still has a writable one —
+    /// a fresh device, or an account whose default was never set. Falling back
+    /// to the first one she can write to is better than refusing the diary
+    /// entry the whole demo turns on.
     private func newEvent() throws -> EKEvent {
-        guard let calendar = store.defaultCalendarForNewEvents else {
-            throw CalendarError.noDefaultCalendar
-        }
+        let calendar = store.defaultCalendarForNewEvents
+            ?? store.calendars(for: .event).first(where: \.allowsContentModifications)
+        guard let calendar else { throw CalendarError.noDefaultCalendar }
+
         let event = EKEvent(eventStore: store)
         event.calendar = calendar
         return event

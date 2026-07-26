@@ -30,6 +30,8 @@ struct PrimaryButton: View {
             .frame(height: Theme.Size.primaryButtonHeight)
             .background(Theme.Palette.accent)
             .clipShape(.rect(cornerRadius: Theme.Radius.medium, style: .continuous))
+            // The whole 72pt is the target, not just where the glyphs land.
+            .contentShape(.rect(cornerRadius: Theme.Radius.medium, style: .continuous))
         }
         .buttonStyle(.plain)
     }
