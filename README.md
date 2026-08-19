@@ -108,4 +108,4 @@ xcodebuild -scheme CareAid -destination 'platform=iOS Simulator,name=iPhone 17' 
 
 ## Development tooling
 
-This repository includes a [`CLAUDE.md`](CLAUDE.md) project brief for use with [Claude Code](https://claude.com/claude-code).
+This repository includes a [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) outlining the core product goals and constraints.
