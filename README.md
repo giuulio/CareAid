@@ -6,7 +6,8 @@ CareAid is a caregiver-first iOS app. A caregiver speaks one messy, tired though
 
 Every other tool makes you pick the destination first. CareAid takes the routing away, and it schedules medication around **the caregiver's** real life — their work meetings, their commute — not just the patient's.
 
-Built as a hackathon project. See [`CLAUDE.md`](CLAUDE.md) for the full product brief and non-negotiable rules, and [`PLAN.md`](PLAN.md) for the build plan and current progress.
+Built as a hackathon project. See [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) for the full product brief and non-negotiable rules, and [`PLAN.md`](PLAN.md) for the build plan and current progress.
+
 
 ## Non-negotiable rules
 
